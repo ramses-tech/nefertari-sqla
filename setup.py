@@ -7,10 +7,11 @@ here = os.path.abspath(os.path.dirname(__file__))
 install_requires = [
     'sqlalchemy',
     'zope.dottedname',
+    'psycopg2',
     'pyramid_sqlalchemy',
     'sqlalchemy_utils',
     'elasticsearch',
-
+    'pyramid_tm'
 ]
 
 setup(

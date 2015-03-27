@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 venv
 *.pyc
 *.egg
@@ -58,4 +57,3 @@ docs/_build/
 
 # PyBuilder
 target/
->>>>>>> eaa07cc76186d7b129435ddf431661fbf70ee286
