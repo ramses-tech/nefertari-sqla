@@ -12,6 +12,7 @@ install_requires = [
     'sqlalchemy_utils',
     'elasticsearch',
     'pyramid_tm'
+    # 'nefertari' # until it's on pypi, pip install manually
 ]
 
 setup(
