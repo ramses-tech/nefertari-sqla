@@ -43,17 +43,6 @@ def includeme(config):
     config.include('pyramid_tm')
     config.include('pyramid_sqlalchemy')
 
-    def _valid_global(g):
-        ignored = ('log', 'includeme')
-        return (not g.startswith('__') and g not in ignored)
-
-    engine_path = config.registry.settings['db_engine']
-    config.include(engine_path)
-    engine_module = resolve(engine_path)
-    engine_globals = {k: v for k, v in engine_module.__dict__.iteritems()
-                      if _valid_global(k)}
-    globals().update(engine_globals)
-
 
 def setup_database(config):
     """ Setup db engine, db itself. Create db if not exists. """

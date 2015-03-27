@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 
 def on_after_insert(mapper, connection, target):
-    from presto.elasticsearch import ES
+    from nefertari.elasticsearch import ES
     model_cls = target.__class__
     es = ES(model_cls.__name__)
     es.index(target.to_dict())
@@ -19,14 +19,14 @@ def on_after_insert(mapper, connection, target):
 
 
 def on_after_update(mapper, connection, target):
-    from presto.elasticsearch import ES
+    from nefertari.elasticsearch import ES
     es = ES(target.__class__.__name__)
     es.index(target.to_dict())
     es.index_refs(target)
 
 
 def on_after_delete(mapper, connection, target):
-    from presto.elasticsearch import ES
+    from nefertari.elasticsearch import ES
     es = ES(target.__class__.__name__)
     es.delete(target.id)
     es.index_refs(target)

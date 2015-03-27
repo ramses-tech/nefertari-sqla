@@ -1,8 +1,8 @@
 import pytest
 from mock import patch, Mock
 
-from presto.utils.dictset import dictset
-from presto.json_httpexceptions import (
+from nefertari.utils.dictset import dictset
+from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 
 from .. import documents as docs

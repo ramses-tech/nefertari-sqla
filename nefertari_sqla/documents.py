@@ -200,7 +200,7 @@ class BaseMixin(object):
 
         log.debug('get_collection.query_set: %s (%s)', cls.__name__, query_sql)
 
-        query_set._presto_meta = dict(
+        query_set._nefertari_meta = dict(
             total=_total,
             start=_start,
             fields=_fields)
