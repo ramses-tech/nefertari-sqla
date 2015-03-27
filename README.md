@@ -1,2 +1,2 @@
-# nefertari-sqla
+# `nefertari-sqla`
 SQLA backend for Nefertari
