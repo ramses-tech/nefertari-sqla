@@ -33,6 +33,7 @@ from .fields import (
     Relationship,
     PrimaryKeyField,
     ForeignKeyField,
+    DictField,
 )
 
 log = logging.getLogger(__name__)
