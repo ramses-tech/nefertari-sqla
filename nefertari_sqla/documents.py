@@ -318,29 +318,6 @@ class BaseMixin(object):
         _dict['_type'] = self._type
         return _dict
 
-    def process_dict_value(self, field_name, new_value):
-        def split_keys(keys):
-            neg_keys, pos_keys = [], []
-            for key in keys:
-                if key.startswith('__'):
-                    continue
-                if key.startswith('-'):
-                    neg_keys.append(key[1:])
-                else:
-                    pos_keys.append(key.strip())
-            return pos_keys, neg_keys
-
-        final_value = getattr(self, field_name, {})
-        positive, negative = split_keys(new_value.keys())
-
-        # Pop negative keys
-        for key in negative:
-            final_value.pop(key, None)
-
-        # Set positive keys
-        for key in positive:
-            final_value[key] = new_value[key]
-
     def update_iterables(self, params, attr, unique=False, value_type=None):
         mapper = class_mapper(self.__class__)
         fields = {c.name: c for c in mapper.columns}
@@ -359,22 +336,17 @@ class BaseMixin(object):
             return pos_keys, neg_keys
 
         def update_dict():
-            name = params.pop('name')
-            final_value = getattr(self, attr, {})
+            final_value = getattr(self, attr, {}).copy()
+            positive, negative = split_keys(params.keys())
 
-            if name.startswith("-"):
-                final_value.pop(name[1:], None)
-            else:
-                pos, neg = split_keys(params.keys())
-                vals = pos + ["-%s" % n for n in neg]
-                if not vals:
-                    raise JHTTPBadRequest('Missing params')
+            # Pop negative keys
+            for key in negative:
+                final_value.pop(key, None)
 
-                if value_type == list:
-                    self[attr][name] = vals
-                else:
-                    self[attr][name] = vals[0]
-            self.save()
+            # Set positive keys
+            for key in positive:
+                final_value[unicode(key)] = params[key]
+            self.update({attr: final_value})
 
         if is_dict:
             update_dict()
