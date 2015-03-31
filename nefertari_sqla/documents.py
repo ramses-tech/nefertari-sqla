@@ -336,7 +336,8 @@ class BaseMixin(object):
             return pos_keys, neg_keys
 
         def update_dict():
-            final_value = getattr(self, attr, {}).copy()
+            final_value = getattr(self, attr, {}) or {}
+            final_value = final_value.copy()
             positive, negative = split_keys(params.keys())
 
             # Pop negative keys
