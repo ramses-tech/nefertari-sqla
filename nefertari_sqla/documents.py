@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.orm import class_mapper, object_session, properties
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
@@ -14,7 +13,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass
-from .fields import DateTimeField, IntegerField
+from .fields import DateTimeField, IntegerField, DictField
 
 log = logging.getLogger(__name__)
 
@@ -259,7 +258,8 @@ class BaseMixin(object):
         process_bools(params)
         id_field = self.id_field()
         for key, value in params.items():
-            if key == id_field:  # can't change the primary key
+            # Can't change PK field
+            if key == id_field:
                 continue
             setattr(self, key, value)
         session = object_session(self)
@@ -317,6 +317,40 @@ class BaseMixin(object):
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
         return _dict
+
+    def update_iterables(self, params, attr, unique=False, value_type=None):
+        mapper = class_mapper(self.__class__)
+        fields = {c.name: c for c in mapper.columns}
+        is_dict = isinstance(fields.get(attr), DictField)
+
+        def split_keys(keys):
+            neg_keys, pos_keys = [], []
+
+            for key in keys:
+                if key.startswith('__'):
+                    continue
+                if key.startswith('-'):
+                    neg_keys.append(key[1:])
+                else:
+                    pos_keys.append(key.strip())
+            return pos_keys, neg_keys
+
+        def update_dict():
+            final_value = getattr(self, attr, {}) or {}
+            final_value = final_value.copy()
+            positive, negative = split_keys(params.keys())
+
+            # Pop negative keys
+            for key in negative:
+                final_value.pop(key, None)
+
+            # Set positive keys
+            for key in positive:
+                final_value[unicode(key)] = params[key]
+            self.update({attr: final_value})
+
+        if is_dict:
+            update_dict()
 
     def get_reference_documents(self):
         # TODO: Make lazy load of documents

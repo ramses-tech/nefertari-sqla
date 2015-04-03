@@ -4,11 +4,25 @@ from sqlalchemy.types import Integer
 # Since SQLAlchemy 1.0.0
 # from sqlalchemy.types import MatchType
 from .types import (
-    LimitedString, LimitedText, LimitedUnicode, LimitedUnicodeText,
-    LimitedBigInteger, LimitedInteger, LimitedSmallInteger, LimitedFloat,
-    LimitedNumeric, ProcessableDateTime, ProcessableBoolean, ProcessableDate,
-    ProcessableInterval, ProcessableLargeBinary, ProcessablePickleType,
-    ProcessableTime, ProcessableChoice)
+    LimitedString,
+    LimitedText,
+    LimitedUnicode,
+    LimitedBigInteger,
+    LimitedInteger,
+    LimitedSmallInteger,
+    LimitedFloat,
+    LimitedNumeric,
+    LimitedUnicodeText,
+    ProcessableDateTime,
+    ProcessableBoolean,
+    ProcessableDate,
+    ProcessableInterval,
+    ProcessableLargeBinary,
+    ProcessablePickleType,
+    ProcessableTime,
+    ProcessableChoice,
+    ProcessableJSON,
+)
 
 
 class BaseField(Column):
@@ -226,6 +240,11 @@ class UnicodeField(StringField):
 
 class UnicodeTextField(StringField):
     _sqla_generic_type = LimitedUnicodeText
+
+
+class DictField(BaseField):
+    _sqla_generic_type = ProcessableJSON
+    _type_unchanged_kwargs = ()
 
 
 class BaseSchemaItemField(BaseField):

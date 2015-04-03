@@ -1,4 +1,5 @@
 from sqlalchemy import types
+from sqlalchemy_utils.types.json import JSONType
 
 
 class ProcessableMixin(object):
@@ -157,3 +158,7 @@ class ProcessablePickleType(ProcessableMixin, types.TypeDecorator):
 
 class ProcessableTime(ProcessableMixin, types.TypeDecorator):
     impl = types.Time
+
+
+class ProcessableJSON(ProcessableMixin, types.TypeDecorator):
+    impl = JSONType
