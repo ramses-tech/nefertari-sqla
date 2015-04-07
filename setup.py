@@ -2,8 +2,6 @@ import os
 
 from setuptools import setup, find_packages
 
-here = os.path.abspath(os.path.dirname(__file__))
-
 install_requires = [
     'sqlalchemy',
     'zope.dottedname',
@@ -17,7 +15,7 @@ install_requires = [
 
 setup(
     name='nefertari_sqla',
-    version="0.1",
+    version="0.1.0",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
