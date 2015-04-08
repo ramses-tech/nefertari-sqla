@@ -131,6 +131,35 @@ class BaseMixin(object):
         return query_set.count()
 
     @classmethod
+    def filter_objects(cls, objects, first=False, **params):
+        """ Perform query with :params: on instances sequence :objects:
+
+        Arguments:
+            :object: Sequence of :cls: instances on which query should be run.
+            :params: Query parameters.
+        """
+        if first:
+            params['_limit'] = 1
+            params['__raise_on_empty'] = True
+        queryset = cls.get_collection(**params)
+
+        id_name = cls.id_field()
+        ids = [getattr(obj, id_name, None) for obj in objects]
+        ids = [str(id_) for id_ in ids if id_ is not None]
+        field_obj = getattr(cls, id_name)
+        queryset = queryset.from_self().filter(field_obj.in_(ids))
+
+        if first:
+            first_obj = queryset.first()
+            if not first_obj:
+                msg = "'{}({}={})' resource not found".format(
+                    cls.__name__, id_name, params[id_name])
+                raise JHTTPNotFound(msg)
+            return first_obj
+
+        return queryset
+
+    @classmethod
     def get_collection(cls, **params):
         """
         params may include '_limit', '_page', '_sort', '_fields'
