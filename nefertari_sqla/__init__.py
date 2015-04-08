@@ -31,7 +31,7 @@ from .fields import (
     UnicodeField,
     UnicodeTextField,
     Relationship,
-    PrimaryKeyField,
+    IdField,
     ForeignKeyField,
     DictField,
 )

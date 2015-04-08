@@ -165,11 +165,11 @@ class IntegerField(BaseField):
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
-class PrimaryKeyField(IntegerField):
-    """ Just a subclass of IntegerField with primary_key=True. """
-    def __init__(self, *args, **kwargs):
-        kwargs['primary_key'] = True
-        super(PrimaryKeyField, self).__init__(*args, **kwargs)
+class IdField(IntegerField):
+    """ Just a subclass of IntegerField that must be used for fields
+    that represent database-specific 'id' field.
+    """
+    pass
 
 
 class IntervalField(BaseField):
@@ -317,13 +317,25 @@ class ForeignKeyField(BaseSchemaItemField):
     model to add/update relationship. Use `Relationship` constructor
     with backreference settings instead.
     """
-    _sqla_generic_type = Integer
+    _sqla_generic_type = None
     _type_unchanged_kwargs = ()
     _schema_class = ForeignKey
     _schema_kwarg_prefix = 'ref_'
     _schema_valid_kwargs = (
         'column', '_constraint', 'use_alter', 'name', 'onupdate',
         'ondelete', 'deferrable', 'initially', 'link_to_name', 'match')
+
+    def __init__(self, *args, **kwargs):
+        """ Override to determine `self._sqla_generic_type`.
+
+        Type is determined using 'ref_column_type' value from :kwargs:.
+        Its value must be a *Field class of a field that is being
+        referenced by FK field.
+        """
+        if not args:
+            field_type = kwargs.pop(self._schema_kwarg_prefix + 'column_type')
+            self._sqla_generic_type = field_type._sqla_generic_type
+        super(ForeignKeyField, self).__init__(*args, **kwargs)
 
     def _get_referential_action(self, kwargs, key):
         """ Determine/translate generic rule name to SQLA-specific rule.
@@ -354,19 +366,10 @@ class ForeignKeyField(BaseSchemaItemField):
         return rules[action]
 
     def _generate_schema_item(self, cleaned_kw):
-        """ Override default implementation to generate `column` from
-        input kwargs `document` and `field`.
+        """ Override default implementation to generate 'ondelete', 'onupdate'
+        arguments.
         """
-        # Commented out because at the moment of this method running,
-        # model from 'document' may not be loaded yet. Use 'ref_column'.
-        #
-        # from .documents import get_document_cls
         pref = self._schema_kwarg_prefix
-        # document = cleaned_kw.pop(pref + 'document')
-        # field = cleaned_kw.pop(pref + 'field')
-        # document_cls = get_document_cls(document)
-        # column = '.'.join([document_cls.__tablename__, field])
-        # cleaned_kw[pref + 'column'] = column
         cleaned_kw[pref + 'ondelete'] = self._get_referential_action(
             cleaned_kw, 'ondelete')
         cleaned_kw[pref + 'onupdate'] = self._get_referential_action(
