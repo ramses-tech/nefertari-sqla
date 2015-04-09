@@ -247,6 +247,11 @@ class DictField(BaseField):
     _type_unchanged_kwargs = ()
 
 
+class ListField(BaseField):
+    _sqla_generic_type = ProcessableJSON
+    _type_unchanged_kwargs = ()
+
+
 class BaseSchemaItemField(BaseField):
     """ Base class for fields/columns that accept a schema item/constraint
     on column init. E.g. Column(Integer, ForeignKey('user.id'))
