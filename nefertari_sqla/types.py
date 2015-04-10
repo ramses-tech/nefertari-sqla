@@ -190,6 +190,7 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
         Otherwise `types.UnicodeText` is used.
         """
         if dialect.name == 'postgresql':
+            self.is_postgresql = True
             return dialect.type_descriptor(ARRAY(**self.kwargs))
         else:
             self.kwargs.pop('item_type', None)

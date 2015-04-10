@@ -164,21 +164,39 @@ class BaseMixin(object):
     def _pop_iterables(cls, params):
         """ Pop iterable fields' parameters from :params:.
 
+        Iterable values are fould by checking what keys from :params:
+        correspond to names of Dict/List fields on model.
+        In case ListField uses `postgresql.ARRAY` type, value is
+        wrapped in list.
         """
         from .fields import ListField, DictField
-        iter_types = (ListField, DictField)
+        iterables = {}
         columns = class_mapper(cls).columns
-        columns = {c.name: c for c in columns if isinstance(c, iter_types)}
-        iterables = dictset({k: v for k, v in params.items() if k in columns})
+        columns = {c.name: c for c in columns
+                   if isinstance(c, (ListField, DictField))}
+
+        for key, val in params.items():
+            if key not in columns:
+                continue
+            col = columns[key]
+
+            is_postgres = getattr(col.type, 'is_postgresql', False)
+            if isinstance(col, ListField) and is_postgres:
+                val = [val]
+            iterables[key] = val
+
+        iterables = dictset(iterables)
+
         for key in iterables:
             params.pop(key)
+
         return iterables, params
 
     @classmethod
     def apply_iterable_filters(cls, query_set, params):
         """ Filter :query_set: by iterable fields(list/dict) params. """
         for key, val in params.items():
-            expr = getattr(cls, key).contains([val])
+            expr = getattr(cls, key).contains(val)
             query_set = query_set.from_self().filter(expr)
         return query_set
 
