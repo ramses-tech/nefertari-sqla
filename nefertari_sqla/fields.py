@@ -1,6 +1,5 @@
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import Column, ForeignKey
-from sqlalchemy.types import Integer
 # Since SQLAlchemy 1.0.0
 # from sqlalchemy.types import MatchType
 from .types import (
@@ -22,6 +21,7 @@ from .types import (
     ProcessableTime,
     ProcessableChoice,
     ProcessableJSON,
+    ProcessableArray,
 )
 
 
@@ -248,8 +248,35 @@ class DictField(BaseField):
 
 
 class ListField(BaseField):
-    _sqla_generic_type = ProcessableJSON
-    _type_unchanged_kwargs = ()
+    _sqla_generic_type = ProcessableArray
+    _type_unchanged_kwargs = (
+        'as_tuple', 'dimensions', 'zero_indexes')
+
+    def process_type_args(self, kwargs):
+        """ Covert field class to its `_sqla_generic_type`.
+
+        StringField & UnicodeField are replaced with corresponding
+        Text fields because when String* fields are used, SQLA creates
+        db column of postgresql type 'varying[]'. But when querying that
+        column with text, requested text if submited as 'text[]'.
+
+        Changed:
+            item_type field class -> item_type field type
+        """
+        type_args, type_kw, cleaned_kw = super(
+            ListField, self).process_type_args(kwargs)
+
+        if 'item_type' in cleaned_kw:
+            item_type_field = cleaned_kw['item_type']
+
+            if item_type_field is StringField:
+                item_type_field = TextField
+            if item_type_field is UnicodeField:
+                item_type_field = UnicodeTextField
+
+            type_kw['item_type'] = item_type_field._sqla_generic_type
+
+        return type_args, type_kw, cleaned_kw
 
 
 class BaseSchemaItemField(BaseField):

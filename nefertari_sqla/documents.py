@@ -161,6 +161,28 @@ class BaseMixin(object):
         return queryset
 
     @classmethod
+    def _pop_iterables(cls, params):
+        """ Pop iterable fields' parameters from :params:.
+
+        """
+        from .fields import ListField, DictField
+        iter_types = (ListField, DictField)
+        columns = class_mapper(cls).columns
+        columns = {c.name: c for c in columns if isinstance(c, iter_types)}
+        iterables = dictset({k: v for k, v in params.items() if k in columns})
+        for key in iterables:
+            params.pop(key)
+        return iterables, params
+
+    @classmethod
+    def apply_iterable_filters(cls, query_set, params):
+        """ Filter :query_set: by iterable fields(list/dict) params. """
+        for key, val in params.items():
+            expr = getattr(cls, key).contains([val])
+            query_set = query_set.from_self().filter(expr)
+        return query_set
+
+    @classmethod
     def get_collection(cls, **params):
         """
         params may include '_limit', '_page', '_sort', '_fields'
@@ -197,8 +219,12 @@ class BaseMixin(object):
         # If param is _all then remove it
         params.pop_by_values('_all')
 
+        iterables, params = cls._pop_iterables(params)
+
         try:
             query_set = session.query(cls).filter_by(**params)
+            query_set = cls.apply_iterable_filters(query_set, iterables)
+
             _total = query_set.count()
             if _count:
                 return _total

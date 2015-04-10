@@ -1,5 +1,8 @@
+import json
+
 from sqlalchemy import types
 from sqlalchemy_utils.types.json import JSONType
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class ProcessableMixin(object):
@@ -162,3 +165,32 @@ class ProcessableTime(ProcessableMixin, types.TypeDecorator):
 
 class ProcessableJSON(ProcessableMixin, types.TypeDecorator):
     impl = JSONType
+
+
+class ProcessableArray(ProcessableMixin, types.TypeDecorator):
+    impl = ARRAY
+
+    def __init__(self, *args, **kwargs):
+        self.kwargs = kwargs
+        super(ProcessableArray, self).__init__(*args, **kwargs)
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(**self.kwargs))
+        else:
+            self.kwargs.pop('item_type', None)
+            return dialect.type_descriptor(types.UnicodeText)
+
+    def process_bind_param(self, value, dialect):
+        if dialect.name == 'postgresql':
+            return value
+        if value is not None:
+            value = json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if dialect.name == 'postgresql':
+            return value
+        if value is not None:
+            value = json.loads(value)
+        return value
