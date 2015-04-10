@@ -1,8 +1,7 @@
 import json
 
 from sqlalchemy import types
-from sqlalchemy_utils.types.json import JSONType
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
 
 
 class ProcessableMixin(object):
@@ -161,8 +160,42 @@ class ProcessableTime(ProcessableMixin, types.TypeDecorator):
     impl = types.Time
 
 
-class ProcessableJSON(ProcessableMixin, types.TypeDecorator):
-    impl = JSONType
+class ProcessableDict(ProcessableMixin, types.TypeDecorator):
+    """ Represents a dictionary of values.
+
+
+    If 'postgresql' is used, postgress.HSTORE type is used for db column
+    type. Otherwise `UnicodeText` is used.
+    """
+    impl = HSTORE
+
+    def load_dialect_impl(self, dialect):
+        """ Based on :dialect.name: determine type to be used.
+
+        `postgresql.HSTORE` is used in case `postgresql` database is used.
+        Otherwise `types.UnicodeText` is used.
+        """
+        if dialect.name == 'postgresql':
+            self.is_postgresql = True
+            return dialect.type_descriptor(HSTORE)
+        else:
+            return dialect.type_descriptor(types.UnicodeText)
+
+    def process_bind_param(self, value, dialect):
+        value = super(ProcessableDict, self).process_bind_param(
+            value, dialect)
+        if dialect.name == 'postgresql':
+            return value
+        if value is not None:
+            value = json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if dialect.name == 'postgresql':
+            return value
+        if value is not None:
+            value = json.loads(value)
+        return value
 
 
 class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
@@ -194,7 +227,7 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
             return dialect.type_descriptor(ARRAY(**self.kwargs))
         else:
             self.kwargs.pop('item_type', None)
-            return dialect.type_descriptor(types.UnicodeText)
+            return dialect.type_descriptor(types.UnicodeText(**self.kwargs))
 
     def _validate_choices(self, value):
         """ Perform :value: validation checking if its items are contained

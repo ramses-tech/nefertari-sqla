@@ -162,43 +162,43 @@ class BaseMixin(object):
 
     @classmethod
     def _pop_iterables(cls, params):
-        """ Pop iterable fields' parameters from :params:.
+        """ Pop iterable fields' parameters from :params: and generate
+        SQLA expressions to query the database.
 
-        Iterable values are fould by checking what keys from :params:
+        Iterable values are found by checking what keys from :params:
         correspond to names of Dict/List fields on model.
         In case ListField uses `postgresql.ARRAY` type, value is
         wrapped in list.
         """
         from .fields import ListField, DictField
-        iterables = {}
+        iterables = []
         columns = class_mapper(cls).columns
         columns = {c.name: c for c in columns
                    if isinstance(c, (ListField, DictField))}
 
-        for key, val in params.items():
-            if key not in columns:
+        for key, col in columns.items():
+            if key not in params:
                 continue
-            col = columns[key]
-
+            val = params.pop(key)
+            field_obj = getattr(cls, key)
             is_postgres = getattr(col.type, 'is_postgresql', False)
-            if isinstance(col, ListField) and is_postgres:
-                val = [val]
-            iterables[key] = val
 
-        iterables = dictset(iterables)
+            if isinstance(col, ListField):
+                val = [val] if is_postgres else val
+                expr = field_obj.contains(val)
 
-        for key in iterables:
-            params.pop(key)
+            if isinstance(col, DictField):
+                # TODO: Implement querying postgres HSTORE by dot.
+                # E.g. settings.foo=bar; Use `contains({'foo': 'bar'})`
+                # http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#sqlalchemy.dialects.postgresql.HSTORE.comparator_factory
+                if is_postgres:
+                    expr = field_obj.has_key(val)
+                else:
+                    expr = field_obj.contains(val)
+
+            iterables.append(expr)
 
         return iterables, params
-
-    @classmethod
-    def apply_iterable_filters(cls, query_set, params):
-        """ Filter :query_set: by iterable fields(list/dict) params. """
-        for key, val in params.items():
-            expr = getattr(cls, key).contains(val)
-            query_set = query_set.from_self().filter(expr)
-        return query_set
 
     @classmethod
     def get_collection(cls, **params):
@@ -237,11 +237,14 @@ class BaseMixin(object):
         # If param is _all then remove it
         params.pop_by_values('_all')
 
-        iterables, params = cls._pop_iterables(params)
+        iterables_exprs, params = cls._pop_iterables(params)
 
         try:
             query_set = session.query(cls).filter_by(**params)
-            query_set = cls.apply_iterable_filters(query_set, iterables)
+
+            # Apply filtering by iterable expressions
+            for expr in iterables_exprs:
+                query_set = query_set.from_self().filter(expr)
 
             _total = query_set.count()
             if _count:
