@@ -21,7 +21,7 @@ from .types import (
     ProcessableTime,
     ProcessableChoice,
     ProcessableJSON,
-    ProcessableArray,
+    ProcessableChoiceArray,
 )
 
 
@@ -248,9 +248,9 @@ class DictField(BaseField):
 
 
 class ListField(BaseField):
-    _sqla_generic_type = ProcessableArray
+    _sqla_generic_type = ProcessableChoiceArray
     _type_unchanged_kwargs = (
-        'as_tuple', 'dimensions', 'zero_indexes')
+        'as_tuple', 'dimensions', 'zero_indexes', 'choices')
 
     def process_type_args(self, kwargs):
         """ Covert field class to its `_sqla_generic_type`.

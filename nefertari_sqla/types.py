@@ -122,24 +122,22 @@ class ProcessableDate(ProcessableMixin, types.TypeDecorator):
 
 
 class ProcessableChoice(ProcessableMixin, types.TypeDecorator):
-    """ Type that represents a list of values.
+    """ Type that represents value from a particular set of choices.
 
-    Values may be any number of choices from a provided set of
+    Value may be any number of choices from a provided set of
     valid choices.
     """
     impl = types.String
 
     def __init__(self, *args, **kwargs):
-        self.sequence_types = (tuple, list, set)
         self.choices = kwargs.pop('choices', None)
-        if not isinstance(self.choices, self.sequence_types):
-            raise Exception('Choices must be a sequence of type: {}. Got `{}`'.format(
-                self.sequence_types, type(self.choices)))
-        self.choices = set(self.choices)
+        if not isinstance(self.choices, (list, tuple, list)):
+            self.choices = [self.choices]
         super(ProcessableChoice, self).__init__(*args, **kwargs)
 
     def process_bind_param(self, value, dialect):
-        value = super(ProcessableChoice, self).process_bind_param(value, dialect)
+        value = super(ProcessableChoice, self).process_bind_param(
+            value, dialect)
         if (value is not None) and (value not in self.choices):
             err = 'Got an invalid choice `{}`. Valid choices: ({})'.format(
                 value, ', '.join(self.choices))
@@ -167,21 +165,54 @@ class ProcessableJSON(ProcessableMixin, types.TypeDecorator):
     impl = JSONType
 
 
-class ProcessableArray(ProcessableMixin, types.TypeDecorator):
+class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
+    """ Represents a list of values.
+
+    If 'postgresql' is used, postgress.ARRAY type is used for db column
+    type. Otherwise `UnicodeText` is used.
+
+    Supports providing :choices: argument which limits the set of values
+    that may be stored in this field.
+    """
     impl = ARRAY
 
     def __init__(self, *args, **kwargs):
         self.kwargs = kwargs
-        super(ProcessableArray, self).__init__(*args, **kwargs)
+        self.choices = kwargs.pop('choices', ()) or ()
+        if not isinstance(self.choices, (list, tuple, list)):
+            self.choices = [self.choices]
+        super(ProcessableChoiceArray, self).__init__(*args, **kwargs)
 
     def load_dialect_impl(self, dialect):
+        """ Based on :dialect.name: determine type to be used.
+
+        `postgresql.ARRAY` is used in case `postgresql` database is used.
+        Otherwise `types.UnicodeText` is used.
+        """
         if dialect.name == 'postgresql':
             return dialect.type_descriptor(ARRAY(**self.kwargs))
         else:
             self.kwargs.pop('item_type', None)
             return dialect.type_descriptor(types.UnicodeText)
 
+    def _validate_choices(self, value):
+        """ Perform :value: validation checking if its items are contained
+        in :self.choices:
+        """
+        if not self.choices:
+            return value
+        if value is not None:
+            invalid_choices = set(value) - set(self.choices)
+            if invalid_choices:
+                raise ValueError(
+                    'Got invalid choices: ({}). Valid choices: ({})'.format(
+                        ', '.join(invalid_choices), ', '.join(self.choices)))
+        return value
+
     def process_bind_param(self, value, dialect):
+        value = super(ProcessableChoiceArray, self).process_bind_param(
+            value, dialect)
+        value = self._validate_choices(value)
         if dialect.name == 'postgresql':
             return value
         if value is not None:
