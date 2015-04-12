@@ -1,3 +1,4 @@
+import copy
 import logging
 from datetime import datetime
 
@@ -13,7 +14,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass
-from .fields import DateTimeField, IntegerField, DictField
+from .fields import DateTimeField, IntegerField, DictField, ListField
 
 log = logging.getLogger(__name__)
 
@@ -160,6 +161,46 @@ class BaseMixin(object):
         return queryset
 
     @classmethod
+    def _pop_iterables(cls, params):
+        """ Pop iterable fields' parameters from :params:.
+
+        Iterable values are fould by checking what keys from :params:
+        correspond to names of Dict/List fields on model.
+        In case ListField uses `postgresql.ARRAY` type, value is
+        wrapped in list.
+        """
+        from .fields import ListField, DictField
+        iterables = {}
+        columns = class_mapper(cls).columns
+        columns = {c.name: c for c in columns
+                   if isinstance(c, (ListField, DictField))}
+
+        for key, val in params.items():
+            if key not in columns:
+                continue
+            col = columns[key]
+
+            is_postgres = getattr(col.type, 'is_postgresql', False)
+            if isinstance(col, ListField) and is_postgres:
+                val = [val]
+            iterables[key] = val
+
+        iterables = dictset(iterables)
+
+        for key in iterables:
+            params.pop(key)
+
+        return iterables, params
+
+    @classmethod
+    def apply_iterable_filters(cls, query_set, params):
+        """ Filter :query_set: by iterable fields(list/dict) params. """
+        for key, val in params.items():
+            expr = getattr(cls, key).contains(val)
+            query_set = query_set.from_self().filter(expr)
+        return query_set
+
+    @classmethod
     def get_collection(cls, **params):
         """
         params may include '_limit', '_page', '_sort', '_fields'
@@ -196,8 +237,12 @@ class BaseMixin(object):
         # If param is _all then remove it
         params.pop_by_values('_all')
 
+        iterables, params = cls._pop_iterables(params)
+
         try:
             query_set = session.query(cls).filter_by(**params)
+            query_set = cls.apply_iterable_filters(query_set, iterables)
+
             _total = query_set.count()
             if _count:
                 return _total
@@ -351,6 +396,7 @@ class BaseMixin(object):
         mapper = class_mapper(self.__class__)
         fields = {c.name: c for c in mapper.columns}
         is_dict = isinstance(fields.get(attr), DictField)
+        is_list = isinstance(fields.get(attr), ListField)
 
         def split_keys(keys):
             neg_keys, pos_keys = [], []
@@ -378,8 +424,28 @@ class BaseMixin(object):
                 final_value[unicode(key)] = params[key]
             self.update({attr: final_value})
 
+        def update_list():
+            final_value = getattr(self, attr, []) or []
+            final_value = copy.deepcopy(final_value)
+            positive, negative = split_keys(params.keys())
+
+            if not (positive + negative):
+                raise JHTTPBadRequest('Missing params')
+
+            if positive:
+                if unique:
+                    positive = [v for v in positive if v not in final_value]
+                final_value += positive
+
+            if negative:
+                final_value = list(set(final_value) - set(negative))
+
+            self.update({attr: final_value})
+
         if is_dict:
             update_dict()
+        elif is_list:
+            update_list()
 
     def get_reference_documents(self):
         # TODO: Make lazy load of documents
