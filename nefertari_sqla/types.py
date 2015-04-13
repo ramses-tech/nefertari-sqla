@@ -1,4 +1,5 @@
 import json
+import datetime
 
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
@@ -146,6 +147,14 @@ class ProcessableChoice(ProcessableMixin, types.TypeDecorator):
 
 class ProcessableInterval(ProcessableMixin, types.TypeDecorator):
     impl = types.Interval
+
+    def process_bind_param(self, value, dialect):
+        """ Convert seconds(int) :value: to `datetime.timedelta` instance. """
+        value = super(ProcessableInterval, self).process_bind_param(
+            value, dialect)
+        if isinstance(value, int):
+            value = datetime.timedelta(seconds=value)
+        return value
 
 
 class ProcessableLargeBinary(ProcessableMixin, types.TypeDecorator):
