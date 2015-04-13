@@ -171,15 +171,19 @@ class BaseMixin(object):
         wrapped in list.
         """
         from .fields import ListField, DictField
-        iterables = []
+        iterables = {}
         columns = class_mapper(cls).columns
         columns = {c.name: c for c in columns
                    if isinstance(c, (ListField, DictField))}
 
-        for key, col in columns.items():
-            if key not in params:
+        for key, val in params.items():
+            suffix = None
+            if '.' in key:
+                key, suffix = key.split('.')[:2]
+            col = columns.get(key)
+            if col is None:
                 continue
-            val = params.pop(key)
+
             field_obj = getattr(cls, key)
             is_postgres = getattr(col.type, 'is_postgresql', False)
 
@@ -188,17 +192,23 @@ class BaseMixin(object):
                 expr = field_obj.contains(val)
 
             if isinstance(col, DictField):
-                # TODO: Implement querying postgres HSTORE by dot.
-                # E.g. settings.foo=bar; Use `contains({'foo': 'bar'})`
-                # http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#sqlalchemy.dialects.postgresql.HSTORE.comparator_factory
                 if is_postgres:
-                    expr = field_obj.has_key(val)
+                    if suffix is not None:
+                        # Check that field contains {suffix: val} pair
+                        expr = field_obj.contains({suffix: val})
+                    else:
+                        # Check that field contains `val` key
+                        expr = field_obj.has_key(val)
                 else:
                     expr = field_obj.contains(val)
 
-            iterables.append(expr)
+            key = key if suffix is None else '.'.join([key, suffix])
+            iterables[key] = expr
 
-        return iterables, params
+        for key in iterables.keys():
+            params.pop(key)
+
+        return iterables.values(), params
 
     @classmethod
     def get_collection(cls, **params):
@@ -225,6 +235,8 @@ class BaseMixin(object):
         # Remove any __ legacy instructions from this point on
         params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
 
+        iterables_exprs, params = cls._pop_iterables(params)
+
         if __strict:
             _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
@@ -236,8 +248,6 @@ class BaseMixin(object):
 
         # If param is _all then remove it
         params.pop_by_values('_all')
-
-        iterables_exprs, params = cls._pop_iterables(params)
 
         try:
             query_set = session.query(cls).filter_by(**params)
