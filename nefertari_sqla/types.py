@@ -31,13 +31,13 @@ class LengthLimitedStringMixin(ProcessableMixin):
     def process_bind_param(self, value, dialect):
         value = super(LengthLimitedStringMixin, self).process_bind_param(
             value, dialect)
-        value_len = 0 if value is None else len(value)
-        if (self.min_length is not None) and value_len < self.min_length:
-            raise ValueError('Value length must be more than {}'.format(
-                self.min_length))
-        if (self.max_length is not None) and value_len > self.max_length:
-            raise ValueError('Value length must be less than {}'.format(
-                self.max_length))
+        if value is not None:
+            if (self.min_length is not None) and len(value) < self.min_length:
+                raise ValueError('Value length must be more than {}'.format(
+                    self.min_length))
+            if (self.max_length is not None) and len(value) > self.max_length:
+                raise ValueError('Value length must be less than {}'.format(
+                    self.max_length))
         return value
 
 
