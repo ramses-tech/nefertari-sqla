@@ -217,6 +217,7 @@ class BaseMixin(object):
         returns paginated and sorted query set
         raises JHTTPBadRequest for bad values in params
         """
+        log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
         __strict = params.pop('__strict', True)
 
@@ -403,6 +404,8 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
+        if not _dict.get('id'):
+            _dict['id'] = getattr(self, self.id_field())
         return _dict
 
     def update_iterables(self, params, attr, unique=False, value_type=None):
