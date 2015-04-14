@@ -330,6 +330,7 @@ class BaseMixin(object):
 
     def _update(self, params, **kw):
         process_bools(params)
+        self.check_fields_allowed(params.keys())
         id_field = self.id_field()
         for key, value in params.items():
             # Can't change PK field
