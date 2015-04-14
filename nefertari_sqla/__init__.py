@@ -57,4 +57,9 @@ def setup_database(config):
         log.info(
             'Database does not exit. Creating database at %s' % engine.url)
         create_database(engine.url)
+
+    # Create HSTORE extension if database is postgresql
+    if engine.url.get_backend_name() == 'postgresql':
+        engine.execute('CREATE EXTENSION IF NOT EXISTS hstore;')
+
     BaseObject.metadata.create_all(engine)

@@ -20,7 +20,7 @@ from .types import (
     ProcessablePickleType,
     ProcessableTime,
     ProcessableChoice,
-    ProcessableJSON,
+    ProcessableDict,
     ProcessableChoiceArray,
 )
 
@@ -243,7 +243,7 @@ class UnicodeTextField(StringField):
 
 
 class DictField(BaseField):
-    _sqla_generic_type = ProcessableJSON
+    _sqla_generic_type = ProcessableDict
     _type_unchanged_kwargs = ()
 
 

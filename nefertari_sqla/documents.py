@@ -162,9 +162,10 @@ class BaseMixin(object):
 
     @classmethod
     def _pop_iterables(cls, params):
-        """ Pop iterable fields' parameters from :params:.
+        """ Pop iterable fields' parameters from :params: and generate
+        SQLA expressions to query the database.
 
-        Iterable values are fould by checking what keys from :params:
+        Iterable values are found by checking what keys from :params:
         correspond to names of Dict/List fields on model.
         In case ListField uses `postgresql.ARRAY` type, value is
         wrapped in list.
@@ -176,29 +177,38 @@ class BaseMixin(object):
                    if isinstance(c, (ListField, DictField))}
 
         for key, val in params.items():
-            if key not in columns:
+            suffix = None
+            if '.' in key:
+                key, suffix = key.split('.')[:2]
+            col = columns.get(key)
+            if col is None:
                 continue
-            col = columns[key]
 
+            field_obj = getattr(cls, key)
             is_postgres = getattr(col.type, 'is_postgresql', False)
-            if isinstance(col, ListField) and is_postgres:
-                val = [val]
-            iterables[key] = val
 
-        iterables = dictset(iterables)
+            if isinstance(col, ListField):
+                val = [val] if is_postgres else val
+                expr = field_obj.contains(val)
 
-        for key in iterables:
+            if isinstance(col, DictField):
+                if is_postgres:
+                    if suffix is not None:
+                        # Check that field contains {suffix: val} pair
+                        expr = field_obj.contains({suffix: val})
+                    else:
+                        # Check that field contains `val` key
+                        expr = field_obj.has_key(val)
+                else:
+                    expr = field_obj.contains(val)
+
+            key = key if suffix is None else '.'.join([key, suffix])
+            iterables[key] = expr
+
+        for key in iterables.keys():
             params.pop(key)
 
-        return iterables, params
-
-    @classmethod
-    def apply_iterable_filters(cls, query_set, params):
-        """ Filter :query_set: by iterable fields(list/dict) params. """
-        for key, val in params.items():
-            expr = getattr(cls, key).contains(val)
-            query_set = query_set.from_self().filter(expr)
-        return query_set
+        return iterables.values(), params
 
     @classmethod
     def get_collection(cls, **params):
@@ -225,6 +235,8 @@ class BaseMixin(object):
         # Remove any __ legacy instructions from this point on
         params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
 
+        iterables_exprs, params = cls._pop_iterables(params)
+
         if __strict:
             _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
@@ -237,11 +249,12 @@ class BaseMixin(object):
         # If param is _all then remove it
         params.pop_by_values('_all')
 
-        iterables, params = cls._pop_iterables(params)
-
         try:
             query_set = session.query(cls).filter_by(**params)
-            query_set = cls.apply_iterable_filters(query_set, iterables)
+
+            # Apply filtering by iterable expressions
+            for expr in iterables_exprs:
+                query_set = query_set.from_self().filter(expr)
 
             _total = query_set.count()
             if _count:
