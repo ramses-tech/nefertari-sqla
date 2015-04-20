@@ -66,6 +66,12 @@ class BaseMixin(object):
 
     @classmethod
     def autogenerate_for(cls, model, set_to):
+        """ Setup `after_insert` event handler.
+
+        Event handler is registered for class :model: and creates a new
+        instance of :cls: with a field :set_to: set to an instance on
+        which event occured.
+        """
         from sqlalchemy import event
 
         def generate(mapper, connection, target):
