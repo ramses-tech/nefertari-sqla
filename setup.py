@@ -10,12 +10,12 @@ install_requires = [
     'sqlalchemy_utils',
     'elasticsearch',
     'pyramid_tm',
-    'nefertari'
+    'nefertari==0.2.1'
 ]
 
 setup(
     name='nefertari_sqla',
-    version="0.1.0",
+    version="0.1.1",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
@@ -25,9 +25,9 @@ setup(
         "Topic :: Database",
         "Topic :: Database :: Database Engines/Servers",
     ],
-    author='',
-    author_email='',
-    url='',
+    author='Brandicted',
+    author_email='hello@brandicted.com',
+    url='https://github.com/brandicted/nefertari-sqla',
     keywords='web wsgi bfg pylons pyramid rest sqlalchemy',
     packages=find_packages(),
     include_package_data=True,
