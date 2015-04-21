@@ -120,7 +120,7 @@ Fields
     :special-members:
     :private-members:
 
-.. autoclass:: nefertari_sqla.fields.PrimaryKeyField
+.. autoclass:: nefertari_sqla.fields.IdField
     :members:
     :special-members:
     :private-members:
