@@ -15,7 +15,8 @@ class JSONEncoder(_JSONEncoder):
         if (isinstance(obj, datetime.date) and
                 not isinstance(obj, datetime.datetime)):
             return obj.strftime('%Y-%m-%d')
-
+        if isinstance(obj, datetime.timedelta):
+            return obj.seconds
         if isinstance(obj, decimal.Decimal):
             return float(obj)
 
@@ -35,7 +36,7 @@ class ESJSONSerializer(elasticsearch.serializer.JSONSerializer):
         if isinstance(data, datetime.time):
             return data.strftime('%H:%M:%S')
         if isinstance(data, datetime.timedelta):
-            return str(data)
+            return data.seconds
         if isinstance(data, decimal.Decimal):
             return float(data)
         try:
