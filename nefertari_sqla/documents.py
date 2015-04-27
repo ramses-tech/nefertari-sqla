@@ -65,6 +65,21 @@ class BaseMixin(object):
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
+    def autogenerate_for(cls, model, set_to):
+        """ Setup `after_insert` event handler.
+
+        Event handler is registered for class :model: and creates a new
+        instance of :cls: with a field :set_to: set to an instance on
+        which event occured.
+        """
+        from sqlalchemy import event
+
+        def generate(mapper, connection, target):
+            cls(**{set_to: target})
+
+        event.listen(model, 'after_insert', generate)
+
+    @classmethod
     def id_field(cls):
         """ Get a primary key field name. """
         return class_mapper(cls).primary_key[0].name
