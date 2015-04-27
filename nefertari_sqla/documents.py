@@ -48,8 +48,8 @@ class BaseMixin(object):
     Attributes:
         _auth_fields: String names of fields meant to be displayed to
             authenticated users.
-        _public_fields: String names of fields meant to be displayed to
-            NOT authenticated users.
+        _hidden_fields: String names of fields meant to be displayed to
+            admin only
         _nested_fields: ?
         _nested_relationships: String names of relationship fields
             that should be included in JSON data of an object as full
@@ -57,8 +57,8 @@ class BaseMixin(object):
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
     """
+    _hidden_fields = None
     _auth_fields = None
-    _public_fields = None
     _nested_fields = None
     _nested_relationships = ()
 
