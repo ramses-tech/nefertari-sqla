@@ -187,3 +187,21 @@ class TestBaseMixin(object):
         count = docs.BaseMixin.count(query_set)
         query_set.count.assert_called_once_with()
         assert count == 12345
+
+    @patch.object(docs.BaseMixin, 'get_collection')
+    def test_filter_objects(self, mock_get, memory_db):
+        queryset = Mock()
+        mock_get.return_value = queryset
+
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+
+        MyModel.id.in_ = Mock()
+        MyModel.filter_objects([Mock(id=4)], first=True)
+
+        mock_get.assert_called_once_with(_limit=1, __raise_on_empty=True)
+        queryset.from_self.assert_called_once_with()
+        assert queryset.from_self().filter.call_count == 1
+        queryset.from_self().filter().first.assert_called_once_with()
+        MyModel.id.in_.assert_called_once_with(['4'])
