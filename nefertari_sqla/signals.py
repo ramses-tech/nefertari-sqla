@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy.orm import object_session
 
 
 log = logging.getLogger(__name__)
@@ -20,6 +21,11 @@ def on_after_insert(mapper, connection, target):
 
 
 def on_after_update(mapper, connection, target):
+    # Do not index on collections update. Use 'ES.index_refs' on
+    # insert & delete instead.
+    session = object_session(target)
+    if not session.is_modified(target, include_collections=False):
+        return
     from nefertari.elasticsearch import ES
     # Reload `target` to get access to processed fields values
     model_cls = target.__class__
