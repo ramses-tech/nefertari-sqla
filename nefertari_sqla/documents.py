@@ -308,7 +308,7 @@ class BaseMixin(object):
     @classmethod
     def fields_to_query(cls):
         query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
-        return query_fields + cls.native_fields()
+        return list(set(query_fields + cls.native_fields()))
 
     @classmethod
     def get_resource(cls, **params):

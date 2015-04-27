@@ -196,6 +196,7 @@ class TestBaseMixin(object):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
+        memory_db()
 
         MyModel.id.in_ = Mock()
         MyModel.filter_objects([Mock(id=4)], first=True)
@@ -205,3 +206,80 @@ class TestBaseMixin(object):
         assert queryset.from_self().filter.call_count == 1
         queryset.from_self().filter().first.assert_called_once_with()
         MyModel.id.in_.assert_called_once_with(['4'])
+
+    def test_pop_iterables(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            groups = fields.ListField(item_type=fields.StringField)
+            settings = fields.DictField()
+        memory_db()
+        MyModel.groups.contains = Mock()
+        MyModel.settings.contains = Mock()
+        MyModel.settings.has_key = Mock()
+        MyModel.groups.type.is_postgresql = True
+        MyModel.settings.type.is_postgresql = True
+
+        params = {'settings': 'foo', 'groups': 'bar', 'id': 1}
+        iterables, params = MyModel._pop_iterables(params)
+        assert params == {'id': 1}
+        assert not MyModel.settings.contains.called
+        MyModel.settings.has_key.assert_called_once_with('foo')
+        MyModel.groups.contains.assert_called_once_with(['bar'])
+
+        params = {'settings.foo': 'foo2', 'groups': 'bar', 'id': 1}
+        iterables, params = MyModel._pop_iterables(params)
+        assert params == {'id': 1}
+        assert MyModel.settings.has_key.call_count == 1
+        MyModel.settings.contains.assert_called_once_with({'foo': 'foo2'})
+
+    @patch.object(docs.BaseMixin, 'native_fields')
+    def test_has_field(self, mock_fields):
+        mock_fields.return_value = ['foo', 'bar']
+        assert docs.BaseMixin.has_field('foo')
+        assert not docs.BaseMixin.has_field('bazz')
+
+    @patch.object(docs.BaseMixin, 'get_collection')
+    def test_get_resource(self, mock_get_coll):
+        queryset = Mock()
+        mock_get_coll.return_value = queryset
+        resource = docs.BaseMixin.get_resource(foo='bar')
+        mock_get_coll.assert_called_once_with(
+            __raise_on_empty=True, _limit=1, foo='bar')
+        mock_get_coll().first.assert_called_once_with()
+        assert resource == mock_get_coll().first()
+
+    def test_native_fields(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField()
+        memory_db()
+        assert MyModel.native_fields() == [
+            'updated_at', '_version', 'id', 'name']
+
+    def test_fields_to_query(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField()
+        memory_db()
+        assert MyModel.fields_to_query() == [
+            '_count', '_start', 'name', '_sort', 'updated_at',
+            '_version', '_limit', '_fields', 'id', '_page']
+
+    @patch.object(docs.BaseMixin, 'get_resource')
+    def test_get(self, get_res):
+        docs.BaseMixin.get(foo='bar')
+        get_res.assert_called_once_with(
+            __raise_on_empty=False, foo='bar')
+
+    def test_unique_fields(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField(unique=True)
+            desc = fields.StringField()
+        memory_db()
+        assert MyModel().unique_fields() == [
+            MyModel.id, MyModel.name]
