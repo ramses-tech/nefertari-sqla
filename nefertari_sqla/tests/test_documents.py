@@ -56,7 +56,7 @@ class TestBaseMixin(object):
     def test_id_field(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            my_id_field = fields.IdField()
+            my_id_field = fields.IdField(primary_key=True)
             my_int_field = fields.IntegerField()
         memory_db()
 
@@ -65,7 +65,7 @@ class TestBaseMixin(object):
     def test_check_fields_allowed_not_existing_field(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
         memory_db()
 
@@ -78,7 +78,7 @@ class TestBaseMixin(object):
     def test_check_fields_allowed(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
         memory_db()
         try:
@@ -102,7 +102,7 @@ class TestBaseMixin(object):
     def test_apply_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
             desc = fields.StringField()
             title = fields.StringField()
@@ -117,7 +117,7 @@ class TestBaseMixin(object):
     def test_apply_fields_no_only_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
             desc = fields.StringField()
             title = fields.StringField()
@@ -132,7 +132,7 @@ class TestBaseMixin(object):
     def test_apply_fields_no_exclude_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
             desc = fields.StringField()
             title = fields.StringField()
@@ -147,7 +147,7 @@ class TestBaseMixin(object):
     def test_apply_fields_no_any_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
         memory_db()
 
@@ -159,7 +159,7 @@ class TestBaseMixin(object):
     def test_apply_sort_no_sort(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
         memory_db()
 
@@ -169,7 +169,7 @@ class TestBaseMixin(object):
     def test_apply_sort(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            id = fields.IdField()
+            id = fields.IdField(primary_key=True)
             name = fields.StringField()
         memory_db()
 
