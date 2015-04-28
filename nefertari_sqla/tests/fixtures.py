@@ -25,6 +25,17 @@ def memory_db(request):
     return creator
 
 
+@pytest.fixture
+def simple_model(request):
+    from .. import fields, documents as docs
+
+    class MyModel(docs.BaseDocument):
+        __tablename__ = 'mymodel'
+        id = fields.IdField(primary_key=True)
+        name = fields.StringField()
+    return MyModel
+
+
 # Not used yet, because memory_db is called for each test
 @pytest.fixture
 def db_session(request):

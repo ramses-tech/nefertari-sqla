@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .. import documents as docs
 from .. import fields
-from .fixtures import memory_db, db_session
+from .fixtures import memory_db, db_session, simple_model
 
 
 class TestDocumentHelpers(object):
@@ -65,27 +65,20 @@ class TestBaseMixin(object):
 
         assert MyModel.id_field() == 'my_id_field'
 
-    def test_check_fields_allowed_not_existing_field(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_check_fields_allowed_not_existing_field(
+            self, simple_model, memory_db):
         memory_db()
 
         with pytest.raises(JHTTPBadRequest) as ex:
-            MyModel.check_fields_allowed(('id__in', 'name', 'description'))
+            simple_model.check_fields_allowed(('id__in', 'name', 'description'))
         assert "'MyModel' object does not have fields" in str(ex.value)
         assert 'description' in str(ex.value)
         assert 'name' not in str(ex.value)
 
-    def test_check_fields_allowed(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_check_fields_allowed(self, simple_model, memory_db):
         memory_db()
         try:
-            MyModel.check_fields_allowed(('id__in', 'name'))
+            simple_model.check_fields_allowed(('id__in', 'name'))
         except JHTTPBadRequest:
             raise Exception('Unexpected JHTTPBadRequest exception raised')
 
@@ -147,42 +140,30 @@ class TestBaseMixin(object):
         query_set.with_entities.assert_called_once_with(
             MyModel.title)
 
-    def test_apply_fields_no_any_fields(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_apply_fields_no_any_fields(self, simple_model, memory_db):
         memory_db()
 
         query_set = Mock()
         _fields = []
-        MyModel.apply_fields(query_set, _fields)
+        simple_model.apply_fields(query_set, _fields)
         assert not query_set.with_entities.called
 
-    def test_apply_sort_no_sort(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_apply_sort_no_sort(self, simple_model, memory_db):
         memory_db()
 
         queryset = ['a', 'b']
-        assert MyModel.apply_sort(queryset, []) == queryset
+        assert simple_model.apply_sort(queryset, []) == queryset
 
-    def test_apply_sort(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_apply_sort(self, simple_model, memory_db):
         memory_db()
 
-        MyModel.name.desc = Mock()
+        simple_model.name.desc = Mock()
         queryset = Mock()
         _sort = ['id', '-name']
-        MyModel.apply_sort(queryset, _sort)
-        MyModel.name.desc.assert_called_once_with()
+        simple_model.apply_sort(queryset, _sort)
+        simple_model.name.desc.assert_called_once_with()
         queryset.order_by.assert_called_once_with(
-            MyModel.id, MyModel.name.desc())
+            simple_model.id, simple_model.name.desc())
 
     def test_count(self):
         query_set = Mock()
@@ -192,23 +173,19 @@ class TestBaseMixin(object):
         assert count == 12345
 
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_filter_objects(self, mock_get, memory_db):
-        queryset = Mock()
-        mock_get.return_value = queryset
-
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
+    def test_filter_objects(self, mock_get, simple_model, memory_db):
         memory_db()
 
-        MyModel.id.in_ = Mock()
-        MyModel.filter_objects([Mock(id=4)], first=True)
+        queryset = Mock()
+        mock_get.return_value = queryset
+        simple_model.id.in_ = Mock()
+        simple_model.filter_objects([Mock(id=4)], first=True)
 
         mock_get.assert_called_once_with(_limit=1, __raise_on_empty=True)
         queryset.from_self.assert_called_once_with()
         assert queryset.from_self().filter.call_count == 1
         queryset.from_self().filter().first.assert_called_once_with()
-        MyModel.id.in_.assert_called_once_with(['4'])
+        simple_model.id.in_.assert_called_once_with(['4'])
 
     def test_pop_iterables(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -252,22 +229,14 @@ class TestBaseMixin(object):
         mock_get_coll().first.assert_called_once_with()
         assert resource == mock_get_coll().first()
 
-    def test_native_fields(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_native_fields(self, simple_model, memory_db):
         memory_db()
-        assert MyModel.native_fields() == [
+        assert simple_model.native_fields() == [
             'updated_at', '_version', 'id', 'name']
 
-    def test_fields_to_query(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
-        assert MyModel.fields_to_query() == [
+        assert simple_model.fields_to_query() == [
             '_count', '_start', 'name', '_sort', 'updated_at',
             '_version', '_limit', '_fields', 'id', '_page']
 
@@ -288,15 +257,11 @@ class TestBaseMixin(object):
             MyModel.id, MyModel.name]
 
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_get_or_create_existing(self, get_coll, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_get_or_create_existing(self, get_coll, simple_model, memory_db):
         memory_db()
 
         get_coll.return_value = Mock()
-        one, created = MyModel.get_or_create(
+        one, created = simple_model.get_or_create(
             defaults={'foo': 'bar'}, _limit=2, name='q')
         get_coll.assert_called_once_with(_limit=2, name='q')
         get_coll().one.assert_called_once_with()
@@ -304,33 +269,27 @@ class TestBaseMixin(object):
         assert one == get_coll().one()
 
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_get_or_create_existing_multiple(self, get_coll, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_get_or_create_existing_multiple(
+            self, get_coll, simple_model, memory_db):
         memory_db()
 
         queryset = Mock()
         get_coll.return_value = queryset
         queryset.one.side_effect = MultipleResultsFound
         with pytest.raises(JHTTPBadRequest) as ex:
-            one, created = MyModel.get_or_create(
+            one, created = simple_model.get_or_create(
                 defaults={'foo': 'bar'}, _limit=2, name='q')
         assert 'Bad or Insufficient Params' == str(ex.value)
 
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_get_or_create_existing_created(self, get_coll, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_get_or_create_existing_created(
+            self, get_coll, simple_model, memory_db):
         memory_db()
 
         queryset = Mock()
         get_coll.return_value = queryset
         queryset.one.side_effect = NoResultFound
-        one, created = MyModel.get_or_create(
+        one, created = simple_model.get_or_create(
             defaults={'id': 7}, _limit=2, name='q')
         assert created
         assert queryset.session.add.call_count == 1
@@ -515,14 +474,11 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    def test_bump_version(self, memory_db):
+    def test_bump_version(self, simple_model, memory_db):
         from datetime import datetime
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
         memory_db()
 
-        myobj = MyModel(id=None)
+        myobj = simple_model(id=None)
         assert myobj._version is None
         assert myobj.updated_at is None
         myobj._bump_version()
@@ -535,13 +491,10 @@ class TestBaseDocument(object):
         assert isinstance(myobj.updated_at, datetime)
 
     @patch.object(docs, 'object_session')
-    def test_save(self, obj_session, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
+    def test_save(self, obj_session, simple_model, memory_db):
         memory_db()
 
-        myobj = MyModel(id=4)
+        myobj = simple_model(id=4)
         newobj = myobj.save()
         assert newobj == myobj
         assert myobj._version == 1
@@ -550,10 +503,7 @@ class TestBaseDocument(object):
         obj_session().flush.assert_called_once_with()
 
     @patch.object(docs, 'object_session')
-    def test_save_error(self, obj_session, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
+    def test_save_error(self, obj_session, simple_model, memory_db):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
@@ -561,27 +511,19 @@ class TestBaseDocument(object):
         obj_session().flush.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:
-            MyModel(id=4).save()
+            simple_model(id=4).save()
         assert 'There was a conflict' in str(ex.value)
 
     @patch.object(docs.BaseMixin, '_update')
-    def test_update(self, mock_upd, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_update(self, mock_upd, simple_model, memory_db):
         memory_db()
 
-        myobj = MyModel(id=4)
+        myobj = simple_model(id=4)
         myobj.update({'name': 'q'})
         mock_upd.assert_called_once_with({'name': 'q'})
 
     @patch.object(docs.BaseMixin, '_update')
-    def test_update_error(self, mock_upd, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField()
+    def test_update_error(self, mock_upd, simple_model, memory_db):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
@@ -589,5 +531,97 @@ class TestBaseDocument(object):
         mock_upd.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:
-            MyModel(id=4).update({'name': 'q'})
+            simple_model(id=4).update({'name': 'q'})
         assert 'There was a conflict' in str(ex.value)
+
+
+class TestGetCollection(object):
+
+    def test_sort_param(self, simple_model, memory_db):
+        memory_db()
+
+        simple_model(id=1, name='foo').save()
+        simple_model(id=2, name='bar').save()
+
+        result = simple_model.get_collection(_limit=2, _sort=['-id'])
+        assert result[0].id == 2
+        assert result[1].id == 1
+
+        result = simple_model.get_collection(_limit=2, _sort=['id'])
+        assert result[1].id == 2
+        assert result[0].id == 1
+
+    def test_limit_param(self, simple_model, memory_db):
+        memory_db()
+
+        simple_model(id=1, name='foo').save()
+        simple_model(id=2, name='bar').save()
+
+        result = simple_model.get_collection(_limit=1, _sort=['id'])
+        assert result.count() == 1
+        assert result[0].id == 1
+
+    def test_fields_param(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        result = simple_model.get_collection(_limit=1, _fields=['name'])
+        assert result.all() == [(u'foo',)]
+
+    def test_offset(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        simple_model(id=2, name='bar').save()
+
+        result = simple_model.get_collection(_limit=2, _sort=['id'], _start=1)
+        assert result.count() == 1
+        assert result[0].id == 2
+
+        result = simple_model.get_collection(_limit=1, _sort=['id'], _page=1)
+        assert result.count() == 1
+        assert result[0].id == 2
+
+    def test_count_param(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        result = simple_model.get_collection(_limit=2, _count=True)
+        assert result == 1
+
+    def test_explain_param(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        result = simple_model.get_collection(_limit=2, _explain=True)
+        assert result.startswith('SELECT mymodel')
+
+    def test_strict_param(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        with pytest.raises(JHTTPBadRequest):
+            simple_model.get_collection(
+                _limit=2, __strict=True, name='foo', qwe=1)
+
+        result = simple_model.get_collection(
+            _limit=2, __strict=False, name='foo', qwe=1)
+        assert result.all()[0].name == 'foo'
+
+    def test_raise_on_empty_param(self, simple_model, memory_db):
+        memory_db()
+        with pytest.raises(JHTTPNotFound):
+            simple_model.get_collection(_limit=1, __raise_on_empty=True)
+
+        try:
+            simple_model.get_collection(_limit=1, __raise_on_empty=False)
+        except JHTTPNotFound:
+            raise Exception('Unexpected JHTTPNotFound exception')
+
+    def test_queryset_metadata(self, simple_model, memory_db):
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        queryset = simple_model.get_collection(_limit=1)
+        assert queryset._nefertari_meta['total'] == 1
+        assert queryset._nefertari_meta['start'] == 0
+        assert queryset._nefertari_meta['fields'] == []
+
+    def test_no_limit(self, simple_model, memory_db):
+        memory_db()
+        with pytest.raises(JHTTPBadRequest):
+            simple_model.get_collection()
