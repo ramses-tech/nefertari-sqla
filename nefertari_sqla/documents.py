@@ -48,8 +48,8 @@ class BaseMixin(object):
     Attributes:
         _auth_fields: String names of fields meant to be displayed to
             authenticated users.
-        _public_fields: String names of fields meant to be displayed to
-            NOT authenticated users.
+        _hidden_fields: String names of fields meant to be displayed to
+            admin only
         _nested_fields: ?
         _nested_relationships: String names of relationship fields
             that should be included in JSON data of an object as full
@@ -57,12 +57,27 @@ class BaseMixin(object):
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
     """
+    _hidden_fields = None
     _auth_fields = None
-    _public_fields = None
     _nested_fields = None
     _nested_relationships = ()
 
     _type = property(lambda self: self.__class__.__name__)
+
+    @classmethod
+    def autogenerate_for(cls, model, set_to):
+        """ Setup `after_insert` event handler.
+
+        Event handler is registered for class :model: and creates a new
+        instance of :cls: with a field :set_to: set to an instance on
+        which event occured.
+        """
+        from sqlalchemy import event
+
+        def generate(mapper, connection, target):
+            cls(**{set_to: target})
+
+        event.listen(model, 'after_insert', generate)
 
     @classmethod
     def id_field(cls):
@@ -345,12 +360,21 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
+        fields = {c.name: c for c in class_mapper(self.__class__).columns}
+        iter_fields = set(
+            k for k, v in fields.items()
+            if isinstance(v, (DictField, ListField)))
         id_field = self.id_field()
+
         for key, value in params.items():
             # Can't change PK field
             if key == id_field:
                 continue
-            setattr(self, key, value)
+            if key in iter_fields:
+                self.update_iterables(value, key, unique=True, save=False)
+            else:
+                setattr(self, key, value)
+
         session = object_session(self)
         session.add(self)
         session.flush()
@@ -409,7 +433,8 @@ class BaseMixin(object):
             _dict['id'] = getattr(self, self.id_field())
         return _dict
 
-    def update_iterables(self, params, attr, unique=False, value_type=None):
+    def update_iterables(self, params, attr, unique=False,
+                         value_type=None, save=True):
         mapper = class_mapper(self.__class__)
         fields = {c.name: c for c in mapper.columns}
         is_dict = isinstance(fields.get(attr), DictField)
@@ -439,12 +464,18 @@ class BaseMixin(object):
             # Set positive keys
             for key in positive:
                 final_value[unicode(key)] = params[key]
-            self.update({attr: final_value})
+
+            setattr(self, attr, final_value)
+            if save:
+                session = object_session(self)
+                session.add(self)
+                session.flush()
 
         def update_list():
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            positive, negative = split_keys(params.keys())
+            keys = params.keys() if isinstance(params, dict) else params
+            positive, negative = split_keys(keys)
 
             if not (positive + negative):
                 raise JHTTPBadRequest('Missing params')
@@ -457,7 +488,11 @@ class BaseMixin(object):
             if negative:
                 final_value = list(set(final_value) - set(negative))
 
-            self.update({attr: final_value})
+            setattr(self, attr, final_value)
+            if save:
+                session = object_session(self)
+                session.add(self)
+                session.flush()
 
         if is_dict:
             update_dict()

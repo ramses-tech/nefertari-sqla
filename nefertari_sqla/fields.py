@@ -246,6 +246,12 @@ class DictField(BaseField):
     _sqla_generic_type = ProcessableDict
     _type_unchanged_kwargs = ()
 
+    def process_type_args(self, kwargs):
+        type_args, type_kw, cleaned_kw = super(
+            DictField, self).process_type_args(kwargs)
+        cleaned_kw['default'] = cleaned_kw.get('default') or {}
+        return type_args, type_kw, cleaned_kw
+
 
 class ListField(BaseField):
     _sqla_generic_type = ProcessableChoiceArray
@@ -275,6 +281,8 @@ class ListField(BaseField):
                 item_type_field = UnicodeTextField
 
             type_kw['item_type'] = item_type_field._sqla_generic_type
+
+        cleaned_kw['default'] = cleaned_kw.get('default') or []
 
         return type_args, type_kw, cleaned_kw
 
