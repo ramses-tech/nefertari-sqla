@@ -323,7 +323,7 @@ class BaseMixin(object):
     @classmethod
     def fields_to_query(cls):
         query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
-        return query_fields + cls.native_fields()
+        return list(set(query_fields + cls.native_fields()))
 
     @classmethod
     def get_resource(cls, **params):
@@ -398,7 +398,7 @@ class BaseMixin(object):
             item._update(params)
 
     def __repr__(self):
-        parts = ['%s:' % self.__class__.__name__]
+        parts = []
 
         if hasattr(self, 'id'):
             parts.append('id=%s' % self.id)
@@ -406,7 +406,7 @@ class BaseMixin(object):
         if hasattr(self, '_version'):
             parts.append('v=%s' % self._version)
 
-        return '<%s>' % ', '.join(parts)
+        return '<{}: {}>'.format(self.__class__.__name__, ', '.join(parts))
 
     @classmethod
     def get_by_ids(cls, ids, **params):

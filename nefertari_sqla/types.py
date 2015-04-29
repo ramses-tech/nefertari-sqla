@@ -130,8 +130,8 @@ class ProcessableChoice(ProcessableMixin, types.TypeDecorator):
     impl = types.String
 
     def __init__(self, *args, **kwargs):
-        self.choices = kwargs.pop('choices', None)
-        if not isinstance(self.choices, (list, tuple, list)):
+        self.choices = kwargs.pop('choices', ())
+        if not isinstance(self.choices, (list, tuple, set)):
             self.choices = [self.choices]
         super(ProcessableChoice, self).__init__(*args, **kwargs)
 
@@ -188,6 +188,7 @@ class ProcessableDict(ProcessableMixin, types.TypeDecorator):
             self.is_postgresql = True
             return dialect.type_descriptor(HSTORE)
         else:
+            self.is_postgresql = False
             return dialect.type_descriptor(types.UnicodeText)
 
     def process_bind_param(self, value, dialect):
@@ -219,10 +220,11 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
     impl = ARRAY
 
     def __init__(self, *args, **kwargs):
-        self.kwargs = kwargs
-        self.choices = kwargs.pop('choices', ()) or ()
-        if not isinstance(self.choices, (list, tuple, list)):
+        self.choices = kwargs.pop('choices', None)
+        if self.choices is not None and not isinstance(
+                self.choices, (list, tuple, set)):
             self.choices = [self.choices]
+        self.kwargs = kwargs
         super(ProcessableChoiceArray, self).__init__(*args, **kwargs)
 
     def load_dialect_impl(self, dialect):
@@ -235,6 +237,7 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
             self.is_postgresql = True
             return dialect.type_descriptor(ARRAY(**self.kwargs))
         else:
+            self.is_postgresql = False
             self.kwargs.pop('item_type', None)
             return dialect.type_descriptor(types.UnicodeText(**self.kwargs))
 
@@ -242,14 +245,14 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
         """ Perform :value: validation checking if its items are contained
         in :self.choices:
         """
-        if not self.choices:
+        if self.choices is None or value is None:
             return value
-        if value is not None:
-            invalid_choices = set(value) - set(self.choices)
-            if invalid_choices:
-                raise ValueError(
-                    'Got invalid choices: ({}). Valid choices: ({})'.format(
-                        ', '.join(invalid_choices), ', '.join(self.choices)))
+
+        invalid_choices = set(value) - set(self.choices)
+        if invalid_choices:
+            raise ValueError(
+                'Got invalid choices: ({}). Valid choices: ({})'.format(
+                    ', '.join(invalid_choices), ', '.join(self.choices)))
         return value
 
     def process_bind_param(self, value, dialect):
