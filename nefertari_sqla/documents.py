@@ -429,8 +429,7 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        if not _dict.get('id'):
-            _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.id_field())
         return _dict
 
     def update_iterables(self, params, attr, unique=False,
