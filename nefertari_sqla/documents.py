@@ -85,6 +85,10 @@ class BaseMixin(object):
         return class_mapper(cls).primary_key[0].name
 
     @classmethod
+    def id_field_type(cls):
+        return class_mapper(cls).primary_key[0].type.__class__
+
+    @classmethod
     def check_fields_allowed(cls, fields):
         """ Check if `fields` are allowed to be used on this model. """
         fields = [f.split('__')[0] for f in fields]

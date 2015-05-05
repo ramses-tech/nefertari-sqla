@@ -370,11 +370,13 @@ class ForeignKeyField(BaseSchemaItemField):
 
         Type is determined using 'ref_column_type' value from :kwargs:.
         Its value must be a *Field class of a field that is being
-        referenced by FK field.
+        referenced by FK field or a `_sqla_generic_type` of that *Field cls.
         """
         if not args:
             field_type = kwargs.pop(self._schema_kwarg_prefix + 'column_type')
-            self._sqla_generic_type = field_type._sqla_generic_type
+            if hasattr(field_type, '_sqla_generic_type'):
+                field_type = field_type._sqla_generic_type
+            self._sqla_generic_type = field_type
         super(ForeignKeyField, self).__init__(*args, **kwargs)
 
     def _get_referential_action(self, kwargs, key):
