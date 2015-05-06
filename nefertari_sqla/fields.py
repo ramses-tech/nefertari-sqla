@@ -30,17 +30,16 @@ class BaseField(Column):
     sqlalchemy.Column(sqlalchemy.Type())
 
     Attributes:
-        _sqla_generic_type: SQLAlchemy generic type class used to instantiate
-            the column type.
+        _sqla_type: SQLAlchemy type class used to instantiate the column type.
         _type_unchanged_kwargs: sequence of strings that represent arguments
-            received by `_sqla_generic_type` names of which have not been
+            received by `_sqla_type` names of which have not been
             changed. Values of field init arguments with these names will
             be extracted from field init kwargs and passed to Type init
             as is.
         _column_valid_kwargs: sequence of string names of valid kwargs that
             Column may receive.
     """
-    _sqla_generic_type = None
+    _sqla_type = None
     _type_unchanged_kwargs = ()
     _column_valid_kwargs = (
         'name', 'type_', 'autoincrement', 'default', 'doc', 'key', 'index',
@@ -61,7 +60,7 @@ class BaseField(Column):
             col_kw['name'], col_kw['type_'] = args
         # Column init when defining a schema
         else:
-            col_kw['type_'] = self._sqla_generic_type(*type_args, **type_kw)
+            col_kw['type_'] = self._sqla_type(*type_args, **type_kw)
         return super(BaseField, self).__init__(**col_kw)
 
     def process_type_args(self, kwargs):
@@ -115,12 +114,12 @@ class BaseField(Column):
 
 
 class BigIntegerField(BaseField):
-    _sqla_generic_type = LimitedBigInteger
+    _sqla_type = LimitedBigInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
 class BooleanField(BaseField):
-    _sqla_generic_type = ProcessableBoolean
+    _sqla_type = ProcessableBoolean
     _type_unchanged_kwargs = ('create_constraint', 'processors')
 
     def process_type_args(self, kwargs):
@@ -137,31 +136,31 @@ class BooleanField(BaseField):
 
 
 class DateField(BaseField):
-    _sqla_generic_type = ProcessableDate
+    _sqla_type = ProcessableDate
     _type_unchanged_kwargs = ('processors',)
 
 
 class DateTimeField(BaseField):
-    _sqla_generic_type = ProcessableDateTime
+    _sqla_type = ProcessableDateTime
     _type_unchanged_kwargs = ('timezone', 'processors')
 
 
 class ChoiceField(BaseField):
-    _sqla_generic_type = ProcessableChoice
+    _sqla_type = ProcessableChoice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'choices', 'processors')
 
 
 class FloatField(BaseField):
-    _sqla_generic_type = LimitedFloat
+    _sqla_type = LimitedFloat
     _type_unchanged_kwargs = (
         'precision', 'asdecimal', 'decimal_return_scale',
         'min_value', 'max_value', 'processors')
 
 
 class IntegerField(BaseField):
-    _sqla_generic_type = LimitedInteger
+    _sqla_type = LimitedInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
@@ -173,41 +172,41 @@ class IdField(IntegerField):
 
 
 class IntervalField(BaseField):
-    _sqla_generic_type = ProcessableInterval
+    _sqla_type = ProcessableInterval
     _type_unchanged_kwargs = (
         'native', 'second_precision', 'day_precision', 'processors')
 
 
 class BinaryField(BaseField):
-    _sqla_generic_type = ProcessableLargeBinary
+    _sqla_type = ProcessableLargeBinary
     _type_unchanged_kwargs = ('length', 'processors')
 
 # Since SQLAlchemy 1.0.0
 # class MatchField(BooleanField):
-#     _sqla_generic_type = MatchType
+#     _sqla_type = MatchType
 
 
 class DecimalField(BaseField):
-    _sqla_generic_type = LimitedNumeric
+    _sqla_type = LimitedNumeric
     _type_unchanged_kwargs = (
         'precision', 'scale', 'decimal_return_scale', 'asdecimal',
         'min_value', 'max_value', 'processors')
 
 
 class PickleField(BaseField):
-    _sqla_generic_type = ProcessablePickleType
+    _sqla_type = ProcessablePickleType
     _type_unchanged_kwargs = (
         'protocol', 'pickler', 'comparator',
         'processors')
 
 
 class SmallIntegerField(BaseField):
-    _sqla_generic_type = LimitedSmallInteger
+    _sqla_type = LimitedSmallInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
 class StringField(BaseField):
-    _sqla_generic_type = LimitedString
+    _sqla_type = LimitedString
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'min_length', 'max_length',
@@ -227,23 +226,23 @@ class StringField(BaseField):
 
 
 class TextField(StringField):
-    _sqla_generic_type = LimitedText
+    _sqla_type = LimitedText
 
 
 class TimeField(DateTimeField):
-    _sqla_generic_type = ProcessableTime
+    _sqla_type = ProcessableTime
 
 
 class UnicodeField(StringField):
-    _sqla_generic_type = LimitedUnicode
+    _sqla_type = LimitedUnicode
 
 
 class UnicodeTextField(StringField):
-    _sqla_generic_type = LimitedUnicodeText
+    _sqla_type = LimitedUnicodeText
 
 
 class DictField(BaseField):
-    _sqla_generic_type = ProcessableDict
+    _sqla_type = ProcessableDict
     _type_unchanged_kwargs = ()
 
     def process_type_args(self, kwargs):
@@ -254,12 +253,12 @@ class DictField(BaseField):
 
 
 class ListField(BaseField):
-    _sqla_generic_type = ProcessableChoiceArray
+    _sqla_type = ProcessableChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')
 
     def process_type_args(self, kwargs):
-        """ Covert field class to its `_sqla_generic_type`.
+        """ Covert field class to its `_sqla_type`.
 
         StringField & UnicodeField are replaced with corresponding
         Text fields because when String* fields are used, SQLA creates
@@ -280,7 +279,7 @@ class ListField(BaseField):
             if item_type_field is UnicodeField:
                 item_type_field = UnicodeTextField
 
-            type_kw['item_type'] = item_type_field._sqla_generic_type
+            type_kw['item_type'] = item_type_field._sqla_type
 
         cleaned_kw['default'] = cleaned_kw.get('default') or []
 
@@ -325,7 +324,7 @@ class BaseSchemaItemField(BaseField):
             column_kw['name'], column_kw['type_'], schema_item = args
         # Column init when defining a schema
         else:
-            column_kw['type_'] = self._sqla_generic_type(*type_args, **type_kw)
+            column_kw['type_'] = self._sqla_type(*type_args, **type_kw)
         column_args = (schema_item,)
         return Column.__init__(self, *column_args, **column_kw)
 
@@ -357,7 +356,7 @@ class ForeignKeyField(BaseSchemaItemField):
     model to add/update relationship. Use `Relationship` constructor
     with backreference settings instead.
     """
-    _sqla_generic_type = None
+    _sqla_type = None
     _type_unchanged_kwargs = ()
     _schema_class = ForeignKey
     _schema_kwarg_prefix = 'ref_'
@@ -366,17 +365,17 @@ class ForeignKeyField(BaseSchemaItemField):
         'ondelete', 'deferrable', 'initially', 'link_to_name', 'match')
 
     def __init__(self, *args, **kwargs):
-        """ Override to determine `self._sqla_generic_type`.
+        """ Override to determine `self._sqla_type`.
 
         Type is determined using 'ref_column_type' value from :kwargs:.
         Its value must be a *Field class of a field that is being
-        referenced by FK field or a `_sqla_generic_type` of that *Field cls.
+        referenced by FK field or a `_sqla_type` of that *Field cls.
         """
         if not args:
             field_type = kwargs.pop(self._schema_kwarg_prefix + 'column_type')
-            if hasattr(field_type, '_sqla_generic_type'):
-                field_type = field_type._sqla_generic_type
-            self._sqla_generic_type = field_type
+            if hasattr(field_type, '_sqla_type'):
+                field_type = field_type._sqla_type
+            self._sqla_type = field_type
         super(ForeignKeyField, self).__init__(*args, **kwargs)
 
     def _get_referential_action(self, kwargs, key):
