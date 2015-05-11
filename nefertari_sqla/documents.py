@@ -416,7 +416,7 @@ class BaseMixin(object):
     def get_by_ids(cls, ids, **params):
         query_set = cls.get_collection(**params)
         cls_id = getattr(cls, cls.id_field())
-        return query_set.filter(cls_id.in_(ids)).limit(len(ids))
+        return query_set.from_self().filter(cls_id.in_(ids)).limit(len(ids))
 
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
