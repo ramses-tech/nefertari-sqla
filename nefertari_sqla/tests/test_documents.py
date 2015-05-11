@@ -172,19 +172,22 @@ class TestBaseMixin(object):
         query_set.count.assert_called_once_with()
         assert count == 12345
 
+    @patch.object(docs, 'Session')
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_filter_objects(self, mock_get, simple_model, memory_db):
+    def test_filter_objects(self, mock_get, mock_sess, simple_model, memory_db):
         memory_db()
-
-        queryset = Mock()
-        mock_get.return_value = queryset
+        queryset1 = mock_sess().query().filter()
+        queryset2 = Mock()
+        mock_get.return_value = queryset2
         simple_model.id.in_ = Mock()
         simple_model.filter_objects([Mock(id=4)], first=True)
 
-        mock_get.assert_called_once_with(_limit=1, __raise_on_empty=True)
-        queryset.from_self.assert_called_once_with()
-        assert queryset.from_self().filter.call_count == 1
-        queryset.from_self().filter().first.assert_called_once_with()
+        mock_sess().query.assert_called_with(simple_model)
+        assert mock_sess().query().filter.call_count == 2
+
+        mock_get.assert_called_once_with(
+            _limit=1, __raise_on_empty=True,
+            query_set=queryset1.from_self())
         simple_model.id.in_.assert_called_once_with(['4'])
 
     def test_pop_iterables(self, memory_db):
@@ -353,8 +356,8 @@ class TestBaseMixin(object):
         MyModel.get_by_ids([1, 2, 3], foo='bar')
         mock_coll.assert_called_once_with(foo='bar')
         MyModel.name.in_.assert_called_once_with([1, 2, 3])
-        assert mock_coll().filter.call_count == 1
-        mock_coll().filter().limit.assert_called_once_with(3)
+        assert mock_coll().from_self().filter.call_count == 1
+        mock_coll().from_self().filter().limit.assert_called_once_with(3)
 
     def test_to_dict(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -536,6 +539,23 @@ class TestBaseDocument(object):
 
 
 class TestGetCollection(object):
+
+    def test_input_queryset(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField()
+            foo = fields.StringField()
+        memory_db()
+        MyModel(id=1, name='foo', foo=2).save()
+        MyModel(id=2, name='boo', foo=2).save()
+        MyModel(id=3, name='boo', foo=1).save()
+        queryset1 = MyModel.get_collection(_limit=50, name='boo')
+        assert queryset1.count() == 2
+        queryset2 = MyModel.get_collection(
+            _limit=50, foo=2, query_set=queryset1.from_self())
+        assert queryset2.count() == 1
+        assert queryset2.first().id == 2
 
     def test_sort_param(self, simple_model, memory_db):
         memory_db()

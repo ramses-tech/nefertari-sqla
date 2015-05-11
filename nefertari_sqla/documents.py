@@ -158,26 +158,29 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        if first:
-            params['_limit'] = 1
-            params['__raise_on_empty'] = True
-        queryset = cls.get_collection(**params)
-
         id_name = cls.id_field()
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         field_obj = getattr(cls, id_name)
-        queryset = queryset.from_self().filter(field_obj.in_(ids))
+
+        session = Session()
+        query_set = session.query(cls).filter(field_obj.in_(ids))
 
         if first:
-            first_obj = queryset.first()
+            params['_limit'] = 1
+            params['__raise_on_empty'] = True
+        params['query_set'] = query_set.from_self()
+        query_set = cls.get_collection(**params)
+
+        if first:
+            first_obj = query_set.first()
             if not first_obj:
                 msg = "'{}({}={})' resource not found".format(
                     cls.__name__, id_name, params[id_name])
                 raise JHTTPNotFound(msg)
             return first_obj
 
-        return queryset
+        return query_set
 
     @classmethod
     def _pop_iterables(cls, params):
@@ -245,12 +248,14 @@ class BaseMixin(object):
         _limit = params.pop('_limit', None)
         _page = params.pop('_page', None)
         _start = params.pop('_start', None)
+        query_set = params.pop('query_set', None)
 
         _count = '_count' in params; params.pop('_count', None)
         _explain = '_explain' in params; params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
-        session = Session()
+        if query_set is None:
+            query_set = Session().query(cls)
 
         # Remove any __ legacy instructions from this point on
         params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
@@ -270,7 +275,8 @@ class BaseMixin(object):
         params.pop_by_values('_all')
 
         try:
-            query_set = session.query(cls).filter_by(**params)
+
+            query_set = query_set.filter_by(**params)
 
             # Apply filtering by iterable expressions
             for expr in iterables_exprs:
