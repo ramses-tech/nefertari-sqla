@@ -78,12 +78,12 @@ class BaseMixin(object):
         event.listen(model, 'after_insert', generate)
 
     @classmethod
-    def id_field(cls):
+    def pk_field(cls):
         """ Get a primary key field name. """
         return class_mapper(cls).primary_key[0].name
 
     @classmethod
-    def id_field_type(cls):
+    def pk_field_type(cls):
         return class_mapper(cls).primary_key[0].type.__class__
 
     @classmethod
@@ -156,7 +156,7 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        id_name = cls.id_field()
+        id_name = cls.pk_field()
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         field_obj = getattr(cls, id_name)
@@ -372,11 +372,11 @@ class BaseMixin(object):
         iter_fields = set(
             k for k, v in fields.items()
             if isinstance(v, (DictField, ListField)))
-        id_field = self.id_field()
+        pk_field = self.pk_field()
 
         for key, value in params.items():
             # Can't change PK field
-            if key == id_field:
+            if key == pk_field:
                 continue
             if key in iter_fields:
                 self.update_iterables(value, key, unique=True, save=False)
@@ -419,7 +419,7 @@ class BaseMixin(object):
     @classmethod
     def get_by_ids(cls, ids, **params):
         query_set = cls.get_collection(**params)
-        cls_id = getattr(cls, cls.id_field())
+        cls_id = getattr(cls, cls.pk_field())
         return query_set.from_self().filter(cls_id.in_(ids)).limit(len(ids))
 
     def to_dict(self, **kwargs):
@@ -429,7 +429,7 @@ class BaseMixin(object):
             value = getattr(self, field, None)
             include = field in self._nested_relationships
             if not include:
-                get_id = lambda v: getattr(v, v.id_field(), None)
+                get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
                 elif isinstance(value, InstrumentedList):
@@ -437,7 +437,7 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.pk_field())
         return _dict
 
     def update_iterables(self, params, attr, unique=False,
@@ -533,7 +533,7 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
 
     def _bump_version(self):
-        if getattr(self, self.id_field(), None):
+        if getattr(self, self.pk_field(), None):
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 

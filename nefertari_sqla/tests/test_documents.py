@@ -56,14 +56,14 @@ class TestDocumentHelpers(object):
 
 class TestBaseMixin(object):
 
-    def test_id_field(self, memory_db):
+    def test_pk_field(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            my_id_field = fields.IdField(primary_key=True)
+            my_pk_field = fields.IdField(primary_key=True)
             my_int_field = fields.IntegerField()
         memory_db()
 
-        assert MyModel.id_field() == 'my_id_field'
+        assert MyModel.pk_field() == 'my_pk_field'
 
     def test_check_fields_allowed_not_existing_field(
             self, simple_model, memory_db):
