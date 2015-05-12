@@ -70,7 +70,8 @@ class TestBaseMixin(object):
         memory_db()
 
         with pytest.raises(JHTTPBadRequest) as ex:
-            simple_model.check_fields_allowed(('id__in', 'name', 'description'))
+            simple_model.check_fields_allowed((
+                'id__in', 'name', 'description'))
         assert "'MyModel' object does not have fields" in str(ex.value)
         assert 'description' in str(ex.value)
         assert 'name' not in str(ex.value)
@@ -174,7 +175,8 @@ class TestBaseMixin(object):
 
     @patch.object(docs, 'Session')
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_filter_objects(self, mock_get, mock_sess, simple_model, memory_db):
+    def test_filter_objects(
+            self, mock_get, mock_sess, simple_model, memory_db):
         memory_db()
         queryset1 = mock_sess().query().filter()
         queryset2 = Mock()
@@ -449,17 +451,20 @@ class TestBaseMixin(object):
         obj_session().flush.assert_called_once_with()
 
     def test_get_reference_documents(self, memory_db):
+
         class Child(docs.BaseDocument):
             __tablename__ = 'child'
             id = fields.IdField(primary_key=True)
             parent_id = fields.ForeignKeyField(
                 ref_document='Parent', ref_column='parent.id',
                 ref_column_type=fields.IdField)
+
         class Parent(docs.BaseDocument):
             __tablename__ = 'parent'
             id = fields.IdField(primary_key=True)
             children = fields.Relationship(
                 document='Child', backref_name='parent')
+
         memory_db()
 
         parent = Parent(id=1)

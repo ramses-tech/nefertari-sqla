@@ -122,9 +122,11 @@ class BaseMixin(object):
             fields_exclude = fields_exclude or []
             if fields_exclude:
                 # Remove fields_exclude from fields_only
-                fields_only = [f for f in fields_only if f not in fields_exclude]
+                fields_only = [
+                    f for f in fields_only if f not in fields_exclude]
             if fields_only:
-                fields_only = [getattr(cls, f) for f in sorted(set(fields_only))]
+                fields_only = [
+                    getattr(cls, f) for f in sorted(set(fields_only))]
                 query_set = query_set.with_entities(*fields_only)
 
         except InvalidRequestError as e:
@@ -248,20 +250,24 @@ class BaseMixin(object):
         _start = params.pop('_start', None)
         query_set = params.pop('query_set', None)
 
-        _count = '_count' in params; params.pop('_count', None)
-        _explain = '_explain' in params; params.pop('_explain', None)
+        _count = '_count' in params
+        params.pop('_count', None)
+        _explain = '_explain' in params
+        params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
         if query_set is None:
             query_set = Session().query(cls)
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset(filter(
+            lambda item: not item[0].startswith('__'), params.items()))
 
         iterables_exprs, params = cls._pop_iterables(params)
 
         if __strict:
-            _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
+            _check_fields = [
+                f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -289,7 +295,8 @@ class BaseMixin(object):
 
             _start, _limit = process_limit(_start, _page, _limit)
 
-            # Filtering by fields has to be the first thing to do on the query_set!
+            # Filtering by fields has to be the first thing to do on
+            # the query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
             query_set = query_set.offset(_start).limit(_limit)
@@ -330,7 +337,8 @@ class BaseMixin(object):
 
     @classmethod
     def fields_to_query(cls):
-        query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
+        query_fields = [
+            'id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
         return list(set(query_fields + cls.native_fields()))
 
     @classmethod
@@ -342,7 +350,8 @@ class BaseMixin(object):
 
     @classmethod
     def get(cls, **kw):
-        return cls.get_resource(__raise_on_empty=kw.pop('__raise', False), **kw)
+        return cls.get_resource(
+            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         native_fields = class_mapper(self.__class__).columns
@@ -550,7 +559,8 @@ class BaseDocument(BaseObject, BaseMixin):
                 raise  # Other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
     def update(self, params):
@@ -562,7 +572,8 @@ class BaseDocument(BaseObject, BaseMixin):
                 raise  # other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
 
