@@ -50,7 +50,6 @@ class BaseMixin(object):
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
             non-authenticated users.
-        _nested_fields: ?
         _nested_relationships: String names of relationship fields
             that should be included in JSON data of an object as full
             included documents. If relationship field is not
@@ -59,7 +58,6 @@ class BaseMixin(object):
     """
     _public_fields = None
     _auth_fields = None
-    _nested_fields = None
     _nested_relationships = ()
 
     _type = property(lambda self: self.__class__.__name__)
@@ -80,12 +78,12 @@ class BaseMixin(object):
         event.listen(model, 'after_insert', generate)
 
     @classmethod
-    def id_field(cls):
+    def pk_field(cls):
         """ Get a primary key field name. """
         return class_mapper(cls).primary_key[0].name
 
     @classmethod
-    def id_field_type(cls):
+    def pk_field_type(cls):
         return class_mapper(cls).primary_key[0].type.__class__
 
     @classmethod
@@ -124,9 +122,11 @@ class BaseMixin(object):
             fields_exclude = fields_exclude or []
             if fields_exclude:
                 # Remove fields_exclude from fields_only
-                fields_only = [f for f in fields_only if f not in fields_exclude]
+                fields_only = [
+                    f for f in fields_only if f not in fields_exclude]
             if fields_only:
-                fields_only = [getattr(cls, f) for f in sorted(set(fields_only))]
+                fields_only = [
+                    getattr(cls, f) for f in sorted(set(fields_only))]
                 query_set = query_set.with_entities(*fields_only)
 
         except InvalidRequestError as e:
@@ -158,7 +158,7 @@ class BaseMixin(object):
             :object: Sequence of :cls: instances on which query should be run.
             :params: Query parameters.
         """
-        id_name = cls.id_field()
+        id_name = cls.pk_field()
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         field_obj = getattr(cls, id_name)
@@ -250,20 +250,24 @@ class BaseMixin(object):
         _start = params.pop('_start', None)
         query_set = params.pop('query_set', None)
 
-        _count = '_count' in params; params.pop('_count', None)
-        _explain = '_explain' in params; params.pop('_explain', None)
+        _count = '_count' in params
+        params.pop('_count', None)
+        _explain = '_explain' in params
+        params.pop('_explain', None)
         __raise_on_empty = params.pop('__raise_on_empty', False)
 
         if query_set is None:
             query_set = Session().query(cls)
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset(filter(
+            lambda item: not item[0].startswith('__'), params.items()))
 
         iterables_exprs, params = cls._pop_iterables(params)
 
         if __strict:
-            _check_fields = [f.strip('-+') for f in params.keys() + _fields + _sort]
+            _check_fields = [
+                f.strip('-+') for f in params.keys() + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -291,7 +295,8 @@ class BaseMixin(object):
 
             _start, _limit = process_limit(_start, _page, _limit)
 
-            # Filtering by fields has to be the first thing to do on the query_set!
+            # Filtering by fields has to be the first thing to do on
+            # the query_set!
             query_set = cls.apply_fields(query_set, _fields)
             query_set = cls.apply_sort(query_set, _sort)
             query_set = query_set.offset(_start).limit(_limit)
@@ -332,7 +337,8 @@ class BaseMixin(object):
 
     @classmethod
     def fields_to_query(cls):
-        query_fields = ['id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
+        query_fields = [
+            'id', '_limit', '_page', '_sort', '_fields', '_count', '_start']
         return list(set(query_fields + cls.native_fields()))
 
     @classmethod
@@ -344,7 +350,8 @@ class BaseMixin(object):
 
     @classmethod
     def get(cls, **kw):
-        return cls.get_resource(__raise_on_empty=kw.pop('__raise', False), **kw)
+        return cls.get_resource(
+            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         native_fields = class_mapper(self.__class__).columns
@@ -374,11 +381,11 @@ class BaseMixin(object):
         iter_fields = set(
             k for k, v in fields.items()
             if isinstance(v, (DictField, ListField)))
-        id_field = self.id_field()
+        pk_field = self.pk_field()
 
         for key, value in params.items():
             # Can't change PK field
-            if key == id_field:
+            if key == pk_field:
                 continue
             if key in iter_fields:
                 self.update_iterables(value, key, unique=True, save=False)
@@ -421,7 +428,7 @@ class BaseMixin(object):
     @classmethod
     def get_by_ids(cls, ids, **params):
         query_set = cls.get_collection(**params)
-        cls_id = getattr(cls, cls.id_field())
+        cls_id = getattr(cls, cls.pk_field())
         return query_set.from_self().filter(cls_id.in_(ids)).limit(len(ids))
 
     def to_dict(self, **kwargs):
@@ -431,7 +438,7 @@ class BaseMixin(object):
             value = getattr(self, field, None)
             include = field in self._nested_relationships
             if not include:
-                get_id = lambda v: getattr(v, v.id_field(), None)
+                get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
                 elif isinstance(value, InstrumentedList):
@@ -439,7 +446,7 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.id_field())
+        _dict['id'] = getattr(self, self.pk_field())
         return _dict
 
     def update_iterables(self, params, attr, unique=False,
@@ -535,7 +542,7 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
 
     def _bump_version(self):
-        if getattr(self, self.id_field(), None):
+        if getattr(self, self.pk_field(), None):
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
@@ -552,7 +559,8 @@ class BaseDocument(BaseObject, BaseMixin):
                 raise  # Other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
     def update(self, params):
@@ -564,7 +572,8 @@ class BaseDocument(BaseObject, BaseMixin):
                 raise  # other error, not duplicate
 
             raise JHTTPConflict(
-                detail='Resource `%s` already exists.' % self.__class__.__name__,
+                detail='Resource `{}` already exists.'.format(
+                    self.__class__.__name__),
                 extra={'data': e})
 
 

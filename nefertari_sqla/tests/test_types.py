@@ -2,9 +2,8 @@ import datetime
 
 import pytest
 from mock import patch, Mock
-from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
+from sqlalchemy.dialects.postgresql import HSTORE
 
-from .. import documents as docs
 from .. import fields
 from .. import types
 from .fixtures import memory_db, db_session, simple_model
@@ -134,7 +133,8 @@ class TestProcessableChoice(object):
         field = types.ProcessableChoice()
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('foo', None)
-        assert str(ex.value) == 'Got an invalid choice `foo`. Valid choices: ()'
+        assert str(ex.value) == \
+            'Got an invalid choice `foo`. Valid choices: ()'
 
     def test_none_value(self):
         field = types.ProcessableChoice()
@@ -147,7 +147,8 @@ class TestProcessableChoice(object):
         field = types.ProcessableChoice(choices=['foo'])
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('bar', None)
-        assert str(ex.value) == 'Got an invalid choice `bar`. Valid choices: (foo)'
+        assert str(ex.value) == \
+            'Got an invalid choice `bar`. Valid choices: (foo)'
 
     def test_value_in_choices(self):
         field = types.ProcessableChoice(choices=['foo'])
@@ -247,7 +248,6 @@ class TestProcessableChoiceArray(object):
     @patch.object(types, 'ARRAY')
     @patch.object(types.types, 'UnicodeText')
     def test_load_dialect_impl_not_postgresql(self, mock_unic, mock_array):
-        from sqlalchemy.types import UnicodeText
         field = types.ProcessableChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'some_other'
