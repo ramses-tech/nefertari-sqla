@@ -50,7 +50,6 @@ class BaseMixin(object):
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
             non-authenticated users.
-        _nested_fields: ?
         _nested_relationships: String names of relationship fields
             that should be included in JSON data of an object as full
             included documents. If relationship field is not
@@ -59,7 +58,6 @@ class BaseMixin(object):
     """
     _public_fields = None
     _auth_fields = None
-    _nested_fields = None
     _nested_relationships = ()
 
     _type = property(lambda self: self.__class__.__name__)
