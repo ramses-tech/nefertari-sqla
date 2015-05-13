@@ -412,7 +412,7 @@ class BaseMixin(object):
     @classmethod
     def _update_many(cls, items, **params):
         for item in items:
-            item._update(params)
+            item.update(params)
 
     def __repr__(self):
         parts = []
@@ -553,6 +553,7 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             session.add(self)
             session.flush()
+            session.expire(self)
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:

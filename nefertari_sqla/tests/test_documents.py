@@ -337,10 +337,10 @@ class TestBaseMixin(object):
         assert mock_session().delete.call_count == 2
         mock_session().flush.assert_called_once_with()
 
-    def test_udnerscore_update_many(self):
+    def test_underscore_update_many(self):
         item = Mock()
         docs.BaseMixin._update_many([item], foo='bar')
-        item._update.assert_called_once_with({'foo': 'bar'})
+        item.update.assert_called_once_with({'foo': 'bar'})
 
     def test_repr(self):
         obj = docs.BaseMixin()
