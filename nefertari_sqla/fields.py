@@ -32,12 +32,12 @@ class BaseField(Column):
     Attributes:
         _sqla_type: SQLAlchemy type class used to instantiate the column type.
         _type_unchanged_kwargs: sequence of strings that represent arguments
-            received by `_sqla_type` names of which have not been
+            received by `_sqla_type`, the names of which have not been
             changed. Values of field init arguments with these names will
             be extracted from field init kwargs and passed to Type init
             as is.
         _column_valid_kwargs: sequence of string names of valid kwargs that
-            Column may receive.
+            a Column may receive.
     """
     _sqla_type = None
     _type_unchanged_kwargs = ()
@@ -70,7 +70,7 @@ class BaseField(Column):
 
         Process `kwargs` to extract type-specific arguments.
         If some arguments' names should be changed, extend this method
-        with a manual args processing.
+        with a manual args processor.
 
         Returns:
             * type_args: sequence of type-specific posional arguments
@@ -87,8 +87,8 @@ class BaseField(Column):
 
     def _drop_invalid_kwargs(self, kwargs):
         """ Drop keys from `kwargs` that are not present in
-        `self._column_valid_kwargs`, thus are not valid kwargs that
-        may be passed to Column.
+        `self._column_valid_kwargs`, thus are not valid kwargs to
+        be passed to Column.
         """
         return {k: v for k, v in kwargs.items() if
                 k in self._column_valid_kwargs}
@@ -290,7 +290,7 @@ class BaseSchemaItemField(BaseField):
     """ Base class for fields/columns that accept a schema item/constraint
     on column init. E.g. Column(Integer, ForeignKey('user.id'))
 
-    It differs from a regular columns in a way that item/constr passed to
+    It differs from regular columns in that an item/constraint passed to the
     Column on init has to be passed as a positional argument and should
     also receive arguments. Thus 3 objects need to be created on init:
     Column, Type, and SchemaItem/Constraint.
@@ -298,7 +298,7 @@ class BaseSchemaItemField(BaseField):
     Attributes:
         _schema_class: Class to be instantiated to create a schema item.
         _schema_kwarg_prefix: Prefix schema item's kwargs should have. This
-            is used to not make a mess, as both column, type and schemaitem
+            is used to avoid making a mess, as both column, type and schemaitem
             kwargs may be passed at once.
         _schema_valid_kwargs: Sequence of strings that represent names of
             kwargs `_schema_class` may receive. Should not include prefix.
@@ -346,11 +346,11 @@ class ForeignKeyField(BaseSchemaItemField):
     """ Integer ForeignKey field.
 
     This is the place where `ondelete` rules kwargs should be passed.
-    If you switched from mongodb engine, copy here the same `ondelete`
+    If you switched from the mongodb engine, copy the same `ondelete`
     rules you passed to mongo's `Relationship` constructor.
 
-    `ondelete` kwargs may be kept in both fields with no side-effect
-    when switching between sqla-mongo engines.
+    `ondelete` kwargs may be kept in both fields with no side-effects
+    when switching between the sqla and mongo engines.
 
     Developers are not encouraged to change the value of this field on
     model to add/update relationship. Use `Relationship` constructor
@@ -382,14 +382,15 @@ class ForeignKeyField(BaseSchemaItemField):
         """ Determine/translate generic rule name to SQLA-specific rule.
 
         Output rule name is a valid SQL Referential action name.
-        If `ondelete` kwarg is not provided, no ref. action will be created.
+        If `ondelete` kwarg is not provided, no referential action will be
+        created.
 
         Valid kwargs for `ondelete` kwarg are:
             CASCADE     Translates to SQL as `CASCADE`
             RESTRICT    Translates to SQL as `RESTRICT`
             NULLIFY     Translates to SQL as `SET NULL
 
-        Not supported SQL ref. actions: `NO ACTION`, `SET DEFAULT`
+        Not supported SQL referential actions: `NO ACTION`, `SET DEFAULT`
         """
         key = self._schema_kwarg_prefix + key
         action = kwargs.pop(key, None)
@@ -407,7 +408,7 @@ class ForeignKeyField(BaseSchemaItemField):
         return rules[action]
 
     def _generate_schema_item(self, cleaned_kw):
-        """ Override default implementation to generate 'ondelete', 'onupdate'
+        """ Override default implementation to generate 'ondelete' and 'onupdate'
         arguments.
         """
         pref = self._schema_kwarg_prefix
@@ -439,7 +440,7 @@ def Relationship(**kwargs):
     The goal of this wrapper is to allow passing both relationship and
     backref arguments to a single function.
     Backref arguments should be prefixed with 'backref_'.
-    Function splits relationship-specific and backref-specific arguments
+    This function splits relationship-specific and backref-specific arguments
     and makes a call like:
         relationship(..., ..., backref=backref(...))
     """

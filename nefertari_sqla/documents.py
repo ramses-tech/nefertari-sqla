@@ -68,7 +68,7 @@ class BaseMixin(object):
 
         Event handler is registered for class :model: and creates a new
         instance of :cls: with a field :set_to: set to an instance on
-        which event occured.
+        which the event occured.
         """
         from sqlalchemy import event
 
@@ -187,10 +187,10 @@ class BaseMixin(object):
         """ Pop iterable fields' parameters from :params: and generate
         SQLA expressions to query the database.
 
-        Iterable values are found by checking what keys from :params:
+        Iterable values are found by checking which keys from :params:
         correspond to names of Dict/List fields on model.
-        In case ListField uses `postgresql.ARRAY` type, value is
-        wrapped in list.
+        If ListField uses the `postgresql.ARRAY` type, the value is
+        wrapped in a list.
         """
         from .fields import ListField, DictField
         iterables = {}
@@ -235,9 +235,9 @@ class BaseMixin(object):
     @classmethod
     def get_collection(cls, **params):
         """
-        params may include '_limit', '_page', '_sort', '_fields'
-        returns paginated and sorted query set
-        raises JHTTPBadRequest for bad values in params
+        Params may include '_limit', '_page', '_sort', '_fields'.
+        Returns paginated and sorted query set.
+        Raises JHTTPBadRequest for bad values in params.
         """
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
@@ -533,7 +533,7 @@ class BaseMixin(object):
 class BaseDocument(BaseObject, BaseMixin):
     """ Base class for SQLA models.
 
-    Subclasses of this class that do not define model schema,
+    Subclasses of this class that do not define a model schema
     should be abstract as well (__abstract__ = True).
     """
     __abstract__ = True
@@ -581,7 +581,7 @@ class BaseDocument(BaseObject, BaseMixin):
 class ESBaseDocument(BaseDocument):
     """ Base class for SQLA models that use Elasticsearch.
 
-    Subclasses of this class that do not define model schema,
+    Subclasses of this class that do not define a model schema
     should be abstract as well (__abstract__ = True).
     """
     __abstract__ = True
