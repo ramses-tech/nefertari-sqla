@@ -16,7 +16,7 @@ def is_relationship_field(field, model_cls):
     return isinstance(field_obj, relationship_fields)
 
 
-def relationship_cls(field, model_cls):
+def get_relationship_cls(field, model_cls):
     """ Return class that is pointed to by relationship field
     `field` from model `model_cls`.
 
