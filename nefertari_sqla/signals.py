@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import object_session, class_mapper
 
 
 log = logging.getLogger(__name__)
@@ -29,7 +29,8 @@ def on_after_update(mapper, connection, target):
         return
 
     # Reload `target` to get access to processed fields values
-    session.expire(target)
+    attributes = [c.name for c in class_mapper(target.__class__).columns]
+    session.expire(target, attribute_names=attributes)
 
     from nefertari.elasticsearch import ES
     es = ES(target.__class__.__name__)
@@ -39,8 +40,10 @@ def on_after_update(mapper, connection, target):
 
 def on_after_delete(mapper, connection, target):
     from nefertari.elasticsearch import ES
-    es = ES(target.__class__.__name__)
-    es.delete(target.id)
+    model_cls = target.__class__
+    es = ES(model_cls.__name__)
+    obj_id = getattr(target, model_cls.pk_field())
+    es.delete(obj_id)
     es.index_refs(target)
 
 
