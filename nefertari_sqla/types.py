@@ -63,22 +63,22 @@ class SizeLimitedNumberMixin(ProcessableMixin):
 
 
 class LimitedString(LengthLimitedStringMixin, types.TypeDecorator):
-    """ String type, min and max length if which may be limited. """
+    """ String type, min and max length limits. """
     impl = types.String
 
 
 class LimitedText(LengthLimitedStringMixin, types.TypeDecorator):
-    """ Text type, min and max length if which may be limited. """
+    """ Text type, min and max length limits. """
     impl = types.Text
 
 
 class LimitedUnicode(LengthLimitedStringMixin, types.TypeDecorator):
-    """ Unicode type, min and max length if which may be limited. """
+    """ Unicode type, min and max length limits. """
     impl = types.Unicode
 
 
 class LimitedUnicodeText(LengthLimitedStringMixin, types.TypeDecorator):
-    """ UnicideText type, min and max length if which may be limited. """
+    """ UnicideText type, min and max length limits. """
     impl = types.UnicodeText
 
 

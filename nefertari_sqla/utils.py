@@ -17,11 +17,11 @@ def is_relationship_field(field, model_cls):
 
 
 def get_relationship_cls(field, model_cls):
-    """ Return class which is pointed to by relationship field
+    """ Return class that is pointed to by relationship field
     `field` from model `model_cls`.
 
-    You have to make sure field exists and is a relationship
-    field by yourself. Use `is_relationship_field` for these purposes.
+    Make sure field exists and is a relationship
+    field manually. Use `is_relationship_field` for this.
      """
     mapper = class_mapper(model_cls)
     relationships = {r.key: r for r in mapper.relationships}
