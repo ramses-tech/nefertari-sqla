@@ -436,12 +436,15 @@ class BaseMixin(object):
         _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
+            is_objects_list = isinstance(value, InstrumentedList)
+            if is_objects_list:
+                value = list(set(value))
             include = field in self._nested_relationships
             if not include:
                 get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
-                elif isinstance(value, InstrumentedList):
+                elif is_objects_list:
                     value = [get_id(val) for val in value]
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
