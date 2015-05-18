@@ -13,7 +13,7 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
-from .signals import ESMetaclass
+from .signals import ESMetaclass, index_object
 from .fields import DateTimeField, IntegerField, DictField, ListField
 
 log = logging.getLogger(__name__)
@@ -383,14 +383,17 @@ class BaseMixin(object):
             if isinstance(v, (DictField, ListField)))
         pk_field = self.pk_field()
 
-        for key, value in params.items():
+        for key, new_value in params.items():
             # Can't change PK field
             if key == pk_field:
                 continue
+            old_value = getattr(self, key, None)
             if key in iter_fields:
-                self.update_iterables(value, key, unique=True, save=False)
+                self.update_iterables(new_value, key, unique=True, save=False)
             else:
-                setattr(self, key, value)
+                setattr(self, key, new_value)
+            if isinstance(old_value, BaseMixin) and old_value != new_value:
+                index_object(old_value, with_refs=False)
 
         session = object_session(self)
         session.add(self)
@@ -436,7 +439,9 @@ class BaseMixin(object):
         _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
-            is_objects_list = isinstance(value, InstrumentedList)
+            is_objects_list = (
+                isinstance(value, (InstrumentedList, list)) and value and
+                isinstance(value[0], BaseMixin))
             if is_objects_list:
                 value = list(set(value))
             include = field in self._nested_relationships
