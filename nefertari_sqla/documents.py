@@ -392,6 +392,9 @@ class BaseMixin(object):
                 self.update_iterables(new_value, key, unique=True, save=False)
             else:
                 setattr(self, key, new_value)
+
+            # Trigger reindexation of old value in case it is a DB object and
+            # it is changed to other object
             if isinstance(old_value, BaseMixin) and old_value != new_value:
                 index_object(old_value, with_refs=False)
 
