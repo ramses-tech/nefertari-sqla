@@ -450,7 +450,8 @@ class TestBaseMixin(object):
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
 
-    def test_get_reference_documents(self, memory_db):
+    @patch.object(docs, 'object_session')
+    def test_get_reference_documents(self, mock_sess, memory_db):
 
         class Child(docs.BaseDocument):
             __tablename__ = 'child'
@@ -473,6 +474,9 @@ class TestBaseMixin(object):
         assert len(result) == 1
         assert result[0][0] is Parent
         assert result[0][1] == [parent.to_dict()]
+
+        mock_sess.assert_called_with(parent)
+        mock_sess().refresh.assert_called_with(parent)
 
         # 'Many' side of relationship values are not returned
         assert child in parent.children

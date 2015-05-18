@@ -8,17 +8,22 @@ from sqlalchemy.orm import object_session, class_mapper
 log = logging.getLogger(__name__)
 
 
-def on_after_insert(mapper, connection, target):
+def index_object(obj, with_refs=True):
     from nefertari.elasticsearch import ES
+    es = ES(obj.__class__.__name__)
+    es.index(obj.to_dict())
+    if with_refs:
+        es.index_refs(obj)
+
+
+def on_after_insert(mapper, connection, target):
     # Reload `target` to get access to back references and processed
     # fields values
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
 
-    es = ES(model_cls.__name__)
-    es.index(reloaded.to_dict())
-    es.index_refs(reloaded)
+    index_object(reloaded)
 
 
 def on_after_update(mapper, connection, target):
@@ -27,15 +32,10 @@ def on_after_update(mapper, connection, target):
     session = object_session(target)
     if not session.is_modified(target, include_collections=False):
         return
-
     # Reload `target` to get access to processed fields values
     attributes = [c.name for c in class_mapper(target.__class__).columns]
     session.expire(target, attribute_names=attributes)
-
-    from nefertari.elasticsearch import ES
-    es = ES(target.__class__.__name__)
-    es.index(target.to_dict())
-    es.index_refs(target)
+    index_object(target)
 
 
 def on_after_delete(mapper, connection, target):
