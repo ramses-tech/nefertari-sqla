@@ -439,17 +439,12 @@ class BaseMixin(object):
         _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
-            is_objects_list = (
-                isinstance(value, (InstrumentedList, list)) and value and
-                isinstance(value[0], BaseMixin))
-            if is_objects_list:
-                value = list(set(value))
             include = field in self._nested_relationships
             if not include:
                 get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
-                elif is_objects_list:
+                elif isinstance(value, InstrumentedList):
                     value = [get_id(val) for val in value]
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
@@ -535,6 +530,8 @@ class BaseMixin(object):
             # If 'Many' side should be indexed, its value is already a list.
             if value is None or isinstance(value, list):
                 continue
+            session = object_session(value)
+            session.refresh(value)
             yield (value.__class__, [value.to_dict()])
 
 
