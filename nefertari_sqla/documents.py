@@ -120,12 +120,13 @@ class BaseMixin(object):
         for name, column in columns.items():
             if name == 'id':
                 column = columns.get(cls.pk_field())
-            col_type = column.type
-            if isinstance(col_type, types.ProcessableChoiceArray):
-                col_type = col_type.impl.item_type
-            if col_type not in TYPES_MAP:
+            column_type = column.type
+            if isinstance(column_type, types.ProcessableChoiceArray):
+                column_type = column_type.impl.item_type
+            column_type = type(column_type)
+            if column_type not in TYPES_MAP:
                 continue
-            properties[name] = TYPES_MAP[col_type]
+            properties[name] = TYPES_MAP[column_type]
 
         properties['_type'] = {'type': 'string'}
         return mapping
