@@ -13,7 +13,7 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
-from .signals import ESMetaclass, index_object
+from .signals import ESMetaclass
 from .fields import DateTimeField, IntegerField, DictField, ListField
 
 log = logging.getLogger(__name__)

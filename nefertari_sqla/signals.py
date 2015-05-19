@@ -43,10 +43,6 @@ def on_after_delete(mapper, connection, target):
     es.index_refs(target)
 
 
-def on_collection_item_remove(target, value, initiator):
-    index_object(target)
-
-
 def setup_es_signals_for(source_cls):
     event.listen(source_cls, 'after_insert', on_after_insert)
     event.listen(source_cls, 'after_update', on_after_update)
