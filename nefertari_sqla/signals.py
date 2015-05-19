@@ -22,16 +22,12 @@ def on_after_insert(mapper, connection, target):
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
-
     index_object(reloaded)
 
 
 def on_after_update(mapper, connection, target):
-    # Do not index on collections update. Use 'ES.index_refs' on
-    # insert & delete instead.
     session = object_session(target)
-    if not session.is_modified(target, include_collections=False):
-        return
+
     # Reload `target` to get access to processed fields values
     attributes = [c.name for c in class_mapper(target.__class__).columns]
     session.expire(target, attribute_names=attributes)
