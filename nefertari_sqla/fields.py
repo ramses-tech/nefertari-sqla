@@ -443,6 +443,11 @@ def Relationship(**kwargs):
     This function splits relationship-specific and backref-specific arguments
     and makes a call like:
         relationship(..., ..., backref=backref(...))
+
+    :lazy: setting is set to 'joined' on the 'One' side of One2One or
+    One2Many relationships. This is done both for relationship itself
+    and backref so ORM 'after_update' events are fired when relationship
+    is updated.
     """
     backref_pre = 'backref_'
     kwargs['doc'] = kwargs.pop('help_text', None)
@@ -459,7 +464,11 @@ def Relationship(**kwargs):
         else:
             rel_kw[key] = val
     rel_document = rel_kw.pop('document')
+    if not rel_kw.get('uselist'):
+        rel_kw['lazy'] = 'joined'
     if backref_kw:
+        if not backref_kw.get('uselist'):
+            backref_kw['lazy'] = 'joined'
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
     return relationship(rel_document, **rel_kw)
