@@ -14,7 +14,9 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass, index_object
-from .fields import DateTimeField, IntegerField, DictField, ListField
+from .fields import ListField, DictField, DateTimeField, IntegerField
+from . import types
+
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +26,22 @@ def get_document_cls(name):
         return BaseObject._decl_class_registry[name]
     except KeyError:
         raise ValueError('SQLAlchemy model `{}` does not exist'.format(name))
+
+
+def get_document_classes():
+    """ Get all defined not abstract document classes
+
+    Class is assumed to be non-abstract if it has `__table__` or
+    `__tablename__` attributes defined.
+    """
+    document_classes = {}
+    registry = BaseObject._decl_class_registry
+    for model_name, model_cls in registry.items():
+        tablename = (getattr(model_cls, '__table__', None) is not None or
+                     getattr(model_cls, '__tablename__', None) is not None)
+        if tablename:
+            document_classes[model_name] = model_cls
+    return document_classes
 
 
 def process_lists(_dict):
@@ -40,6 +58,31 @@ def process_bools(_dict):
         if _t == 'bool':
             _dict[new_k] = _dict.pop_bool_param(k)
     return _dict
+
+
+TYPES_MAP = {
+    types.LimitedString: {'type': 'string'},
+    types.LimitedText: {'type': 'string'},
+    types.LimitedUnicode: {'type': 'string'},
+    types.LimitedUnicodeText: {'type': 'string'},
+    types.ProcessableChoice: {'type': 'string'},
+
+    types.ProcessableBoolean: {'type': 'boolean'},
+    types.ProcessableLargeBinary: {'type': 'object'},
+    types.ProcessableDict: {'type': 'object'},
+
+    types.LimitedNumeric: {'type': 'double'},
+    types.LimitedFloat: {'type': 'double'},
+
+    types.LimitedInteger: {'type': 'long'},
+    types.LimitedBigInteger: {'type': 'long'},
+    types.LimitedSmallInteger: {'type': 'long'},
+    types.ProcessableInterval: {'type': 'long'},
+
+    types.ProcessableDateTime: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.ProcessableDate: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.ProcessableTime: {'type': 'date', 'format': 'dateOptionalTime'},
+}
 
 
 class BaseMixin(object):
@@ -61,6 +104,31 @@ class BaseMixin(object):
     _nested_relationships = ()
 
     _type = property(lambda self: self.__class__.__name__)
+
+    @classmethod
+    def get_es_mapping(cls):
+        from nefertari.elasticsearch import ES
+        properties = {}
+        mapping = {
+            ES.src2type(cls.__name__): {
+                'properties': properties
+            }
+        }
+        mapper = class_mapper(cls)
+        columns = {c.key: c for c in mapper.columns}
+
+        for name, column in columns.items():
+            if name == 'id':
+                column = columns.get(cls.pk_field())
+            col_type = column.type
+            if isinstance(col_type, types.ProcessableChoiceArray):
+                col_type = col_type.impl.item_type
+            if col_type not in TYPES_MAP:
+                continue
+            properties[name] = TYPES_MAP[col_type]
+
+        properties['_type'] = {'type': 'string'}
+        return mapping
 
     @classmethod
     def autogenerate_for(cls, model, set_to):
@@ -192,7 +260,6 @@ class BaseMixin(object):
         If ListField uses the `postgresql.ARRAY` type, the value is
         wrapped in a list.
         """
-        from .fields import ListField, DictField
         iterables = {}
         columns = class_mapper(cls).columns
         columns = {c.name: c for c in columns
@@ -377,9 +444,9 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
-        fields = {c.name: c for c in class_mapper(self.__class__).columns}
-        iter_fields = set(
-            k for k, v in fields.items()
+        columns = {c.name: c for c in class_mapper(self.__class__).columns}
+        iter_columns = set(
+            k for k, v in columns.items()
             if isinstance(v, (DictField, ListField)))
         pk_field = self.pk_field()
 
@@ -388,7 +455,7 @@ class BaseMixin(object):
             if key == pk_field:
                 continue
             old_value = getattr(self, key, None)
-            if key in iter_fields:
+            if key in iter_columns:
                 self.update_iterables(new_value, key, unique=True, save=False)
             else:
                 setattr(self, key, new_value)
@@ -458,9 +525,9 @@ class BaseMixin(object):
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True):
         mapper = class_mapper(self.__class__)
-        fields = {c.name: c for c in mapper.columns}
-        is_dict = isinstance(fields.get(attr), DictField)
-        is_list = isinstance(fields.get(attr), ListField)
+        columns = {c.name: c for c in mapper.columns}
+        is_dict = isinstance(columns.get(attr), DictField)
+        is_list = isinstance(columns.get(attr), ListField)
 
         def split_keys(keys):
             neg_keys, pos_keys = [], []
