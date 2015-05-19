@@ -1,6 +1,5 @@
-import os
-
 from setuptools import setup, find_packages
+
 
 install_requires = [
     'sqlalchemy',
@@ -10,12 +9,13 @@ install_requires = [
     'sqlalchemy_utils',
     'elasticsearch',
     'pyramid_tm',
-    'nefertari==0.2.1'
+    'nefertari==0.3.0'
 ]
+
 
 setup(
     name='nefertari_sqla',
-    version="0.1.1",
+    version="0.2.0",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",

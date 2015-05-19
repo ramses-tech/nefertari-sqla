@@ -11,7 +11,7 @@ from .serializers import JSONEncoder, ESJSONSerializer
 from .signals import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
-    relationship_cls)
+    get_relationship_cls)
 from .fields import (
     BigIntegerField,
     BooleanField,
@@ -47,7 +47,7 @@ def includeme(config):
 
 
 def setup_database(config):
-    """ Setup db engine, db itself. Create db if not exists. """
+    """ Setup db engine, db itself. Create db if it doesn't exist. """
     from sqlalchemy import engine_from_config
     from sqlalchemy_utils import database_exists, create_database
     from pyramid_sqlalchemy import BaseObject

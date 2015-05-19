@@ -30,17 +30,16 @@ class BaseField(Column):
     sqlalchemy.Column(sqlalchemy.Type())
 
     Attributes:
-        _sqla_generic_type: SQLAlchemy generic type class used to instantiate
-            the column type.
+        _sqla_type: SQLAlchemy type class used to instantiate the column type.
         _type_unchanged_kwargs: sequence of strings that represent arguments
-            received by `_sqla_generic_type` names of which have not been
+            received by `_sqla_type`, the names of which have not been
             changed. Values of field init arguments with these names will
             be extracted from field init kwargs and passed to Type init
             as is.
         _column_valid_kwargs: sequence of string names of valid kwargs that
-            Column may receive.
+            a Column may receive.
     """
-    _sqla_generic_type = None
+    _sqla_type = None
     _type_unchanged_kwargs = ()
     _column_valid_kwargs = (
         'name', 'type_', 'autoincrement', 'default', 'doc', 'key', 'index',
@@ -61,7 +60,7 @@ class BaseField(Column):
             col_kw['name'], col_kw['type_'] = args
         # Column init when defining a schema
         else:
-            col_kw['type_'] = self._sqla_generic_type(*type_args, **type_kw)
+            col_kw['type_'] = self._sqla_type(*type_args, **type_kw)
         return super(BaseField, self).__init__(**col_kw)
 
     def process_type_args(self, kwargs):
@@ -71,7 +70,7 @@ class BaseField(Column):
 
         Process `kwargs` to extract type-specific arguments.
         If some arguments' names should be changed, extend this method
-        with a manual args processing.
+        with a manual args processor.
 
         Returns:
             * type_args: sequence of type-specific posional arguments
@@ -88,8 +87,8 @@ class BaseField(Column):
 
     def _drop_invalid_kwargs(self, kwargs):
         """ Drop keys from `kwargs` that are not present in
-        `self._column_valid_kwargs`, thus are not valid kwargs that
-        may be passed to Column.
+        `self._column_valid_kwargs`, thus are not valid kwargs to
+        be passed to Column.
         """
         return {k: v for k, v in kwargs.items() if
                 k in self._column_valid_kwargs}
@@ -115,12 +114,12 @@ class BaseField(Column):
 
 
 class BigIntegerField(BaseField):
-    _sqla_generic_type = LimitedBigInteger
+    _sqla_type = LimitedBigInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
 class BooleanField(BaseField):
-    _sqla_generic_type = ProcessableBoolean
+    _sqla_type = ProcessableBoolean
     _type_unchanged_kwargs = ('create_constraint', 'processors')
 
     def process_type_args(self, kwargs):
@@ -137,31 +136,31 @@ class BooleanField(BaseField):
 
 
 class DateField(BaseField):
-    _sqla_generic_type = ProcessableDate
+    _sqla_type = ProcessableDate
     _type_unchanged_kwargs = ('processors',)
 
 
 class DateTimeField(BaseField):
-    _sqla_generic_type = ProcessableDateTime
+    _sqla_type = ProcessableDateTime
     _type_unchanged_kwargs = ('timezone', 'processors')
 
 
 class ChoiceField(BaseField):
-    _sqla_generic_type = ProcessableChoice
+    _sqla_type = ProcessableChoice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'choices', 'processors')
 
 
 class FloatField(BaseField):
-    _sqla_generic_type = LimitedFloat
+    _sqla_type = LimitedFloat
     _type_unchanged_kwargs = (
         'precision', 'asdecimal', 'decimal_return_scale',
         'min_value', 'max_value', 'processors')
 
 
 class IntegerField(BaseField):
-    _sqla_generic_type = LimitedInteger
+    _sqla_type = LimitedInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
@@ -173,41 +172,41 @@ class IdField(IntegerField):
 
 
 class IntervalField(BaseField):
-    _sqla_generic_type = ProcessableInterval
+    _sqla_type = ProcessableInterval
     _type_unchanged_kwargs = (
         'native', 'second_precision', 'day_precision', 'processors')
 
 
 class BinaryField(BaseField):
-    _sqla_generic_type = ProcessableLargeBinary
+    _sqla_type = ProcessableLargeBinary
     _type_unchanged_kwargs = ('length', 'processors')
 
 # Since SQLAlchemy 1.0.0
 # class MatchField(BooleanField):
-#     _sqla_generic_type = MatchType
+#     _sqla_type = MatchType
 
 
 class DecimalField(BaseField):
-    _sqla_generic_type = LimitedNumeric
+    _sqla_type = LimitedNumeric
     _type_unchanged_kwargs = (
         'precision', 'scale', 'decimal_return_scale', 'asdecimal',
         'min_value', 'max_value', 'processors')
 
 
 class PickleField(BaseField):
-    _sqla_generic_type = ProcessablePickleType
+    _sqla_type = ProcessablePickleType
     _type_unchanged_kwargs = (
         'protocol', 'pickler', 'comparator',
         'processors')
 
 
 class SmallIntegerField(BaseField):
-    _sqla_generic_type = LimitedSmallInteger
+    _sqla_type = LimitedSmallInteger
     _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
 
 
 class StringField(BaseField):
-    _sqla_generic_type = LimitedString
+    _sqla_type = LimitedString
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'min_length', 'max_length',
@@ -227,33 +226,39 @@ class StringField(BaseField):
 
 
 class TextField(StringField):
-    _sqla_generic_type = LimitedText
+    _sqla_type = LimitedText
 
 
 class TimeField(DateTimeField):
-    _sqla_generic_type = ProcessableTime
+    _sqla_type = ProcessableTime
 
 
 class UnicodeField(StringField):
-    _sqla_generic_type = LimitedUnicode
+    _sqla_type = LimitedUnicode
 
 
 class UnicodeTextField(StringField):
-    _sqla_generic_type = LimitedUnicodeText
+    _sqla_type = LimitedUnicodeText
 
 
 class DictField(BaseField):
-    _sqla_generic_type = ProcessableDict
+    _sqla_type = ProcessableDict
     _type_unchanged_kwargs = ()
+
+    def process_type_args(self, kwargs):
+        type_args, type_kw, cleaned_kw = super(
+            DictField, self).process_type_args(kwargs)
+        cleaned_kw['default'] = cleaned_kw.get('default') or {}
+        return type_args, type_kw, cleaned_kw
 
 
 class ListField(BaseField):
-    _sqla_generic_type = ProcessableChoiceArray
+    _sqla_type = ProcessableChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')
 
     def process_type_args(self, kwargs):
-        """ Covert field class to its `_sqla_generic_type`.
+        """ Covert field class to its `_sqla_type`.
 
         StringField & UnicodeField are replaced with corresponding
         Text fields because when String* fields are used, SQLA creates
@@ -274,7 +279,9 @@ class ListField(BaseField):
             if item_type_field is UnicodeField:
                 item_type_field = UnicodeTextField
 
-            type_kw['item_type'] = item_type_field._sqla_generic_type
+            type_kw['item_type'] = item_type_field._sqla_type
+
+        cleaned_kw['default'] = cleaned_kw.get('default') or []
 
         return type_args, type_kw, cleaned_kw
 
@@ -283,7 +290,7 @@ class BaseSchemaItemField(BaseField):
     """ Base class for fields/columns that accept a schema item/constraint
     on column init. E.g. Column(Integer, ForeignKey('user.id'))
 
-    It differs from a regular columns in a way that item/constr passed to
+    It differs from regular columns in that an item/constraint passed to the
     Column on init has to be passed as a positional argument and should
     also receive arguments. Thus 3 objects need to be created on init:
     Column, Type, and SchemaItem/Constraint.
@@ -291,7 +298,7 @@ class BaseSchemaItemField(BaseField):
     Attributes:
         _schema_class: Class to be instantiated to create a schema item.
         _schema_kwarg_prefix: Prefix schema item's kwargs should have. This
-            is used to not make a mess, as both column, type and schemaitem
+            is used to avoid making a mess, as both column, type and schemaitem
             kwargs may be passed at once.
         _schema_valid_kwargs: Sequence of strings that represent names of
             kwargs `_schema_class` may receive. Should not include prefix.
@@ -317,7 +324,7 @@ class BaseSchemaItemField(BaseField):
             column_kw['name'], column_kw['type_'], schema_item = args
         # Column init when defining a schema
         else:
-            column_kw['type_'] = self._sqla_generic_type(*type_args, **type_kw)
+            column_kw['type_'] = self._sqla_type(*type_args, **type_kw)
         column_args = (schema_item,)
         return Column.__init__(self, *column_args, **column_kw)
 
@@ -339,17 +346,17 @@ class ForeignKeyField(BaseSchemaItemField):
     """ Integer ForeignKey field.
 
     This is the place where `ondelete` rules kwargs should be passed.
-    If you switched from mongodb engine, copy here the same `ondelete`
+    If you switched from the mongodb engine, copy the same `ondelete`
     rules you passed to mongo's `Relationship` constructor.
 
-    `ondelete` kwargs may be kept in both fields with no side-effect
-    when switching between sqla-mongo engines.
+    `ondelete` kwargs may be kept in both fields with no side-effects
+    when switching between the sqla and mongo engines.
 
     Developers are not encouraged to change the value of this field on
     model to add/update relationship. Use `Relationship` constructor
     with backreference settings instead.
     """
-    _sqla_generic_type = None
+    _sqla_type = None
     _type_unchanged_kwargs = ()
     _schema_class = ForeignKey
     _schema_kwarg_prefix = 'ref_'
@@ -358,29 +365,32 @@ class ForeignKeyField(BaseSchemaItemField):
         'ondelete', 'deferrable', 'initially', 'link_to_name', 'match')
 
     def __init__(self, *args, **kwargs):
-        """ Override to determine `self._sqla_generic_type`.
+        """ Override to determine `self._sqla_type`.
 
         Type is determined using 'ref_column_type' value from :kwargs:.
         Its value must be a *Field class of a field that is being
-        referenced by FK field.
+        referenced by FK field or a `_sqla_type` of that *Field cls.
         """
         if not args:
             field_type = kwargs.pop(self._schema_kwarg_prefix + 'column_type')
-            self._sqla_generic_type = field_type._sqla_generic_type
+            if hasattr(field_type, '_sqla_type'):
+                field_type = field_type._sqla_type
+            self._sqla_type = field_type
         super(ForeignKeyField, self).__init__(*args, **kwargs)
 
     def _get_referential_action(self, kwargs, key):
         """ Determine/translate generic rule name to SQLA-specific rule.
 
         Output rule name is a valid SQL Referential action name.
-        If `ondelete` kwarg is not provided, no ref. action will be created.
+        If `ondelete` kwarg is not provided, no referential action will be
+        created.
 
         Valid kwargs for `ondelete` kwarg are:
             CASCADE     Translates to SQL as `CASCADE`
             RESTRICT    Translates to SQL as `RESTRICT`
             NULLIFY     Translates to SQL as `SET NULL
 
-        Not supported SQL ref. actions: `NO ACTION`, `SET DEFAULT`
+        Not supported SQL referential actions: `NO ACTION`, `SET DEFAULT`
         """
         key = self._schema_kwarg_prefix + key
         action = kwargs.pop(key, None)
@@ -398,7 +408,7 @@ class ForeignKeyField(BaseSchemaItemField):
         return rules[action]
 
     def _generate_schema_item(self, cleaned_kw):
-        """ Override default implementation to generate 'ondelete', 'onupdate'
+        """ Override default implementation to generate 'ondelete' and 'onupdate'
         arguments.
         """
         pref = self._schema_kwarg_prefix
@@ -430,9 +440,14 @@ def Relationship(**kwargs):
     The goal of this wrapper is to allow passing both relationship and
     backref arguments to a single function.
     Backref arguments should be prefixed with 'backref_'.
-    Function splits relationship-specific and backref-specific arguments
+    This function splits relationship-specific and backref-specific arguments
     and makes a call like:
         relationship(..., ..., backref=backref(...))
+
+    :lazy: setting is set to 'joined' on the 'One' side of One2One or
+    One2Many relationships. This is done both for relationship itself
+    and backref so ORM 'after_update' events are fired when relationship
+    is updated.
     """
     backref_pre = 'backref_'
     kwargs['doc'] = kwargs.pop('help_text', None)
@@ -449,7 +464,11 @@ def Relationship(**kwargs):
         else:
             rel_kw[key] = val
     rel_document = rel_kw.pop('document')
+    if not rel_kw.get('uselist'):
+        rel_kw['lazy'] = 'joined'
     if backref_kw:
+        if not backref_kw.get('uselist'):
+            backref_kw['lazy'] = 'joined'
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
     return relationship(rel_document, **rel_kw)
