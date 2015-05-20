@@ -444,10 +444,14 @@ def Relationship(**kwargs):
     and makes a call like:
         relationship(..., ..., backref=backref(...))
 
-    :lazy: setting is set to 'joined' on the 'One' side of One2One or
+    :lazy: setting is set to 'immediate' on the 'One' side of One2One or
     One2Many relationships. This is done both for relationship itself
     and backref so ORM 'after_update' events are fired when relationship
-    is updated.
+    is updated. For backref 'uselist' is assumed to be False by default.
+
+    From SQLAlchemy docs: immediate - items should be loaded as the parents
+    are loaded, using a separate SELECT statement, or identity map fetch for
+    simple many-to-one references.
     """
     backref_pre = 'backref_'
     kwargs['doc'] = kwargs.pop('help_text', None)
@@ -464,11 +468,11 @@ def Relationship(**kwargs):
         else:
             rel_kw[key] = val
     rel_document = rel_kw.pop('document')
-    if not rel_kw.get('uselist'):
-        rel_kw['lazy'] = 'joined'
+    if 'uselist' in rel_kw and not rel_kw['uselist']:
+        rel_kw['lazy'] = 'immediate'
     if backref_kw:
         if not backref_kw.get('uselist'):
-            backref_kw['lazy'] = 'joined'
+            backref_kw['lazy'] = 'immediate'
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
     return relationship(rel_document, **rel_kw)
