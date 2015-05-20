@@ -22,6 +22,21 @@ class TestDocumentHelpers(object):
         assert doc_cls == 'bar'
 
     @patch.object(docs, 'BaseObject')
+    def test_get_document_classes(self, mock_obj):
+        foo_mock = Mock(__table__='foo')
+        baz_mock = Mock(__tablename__='baz')
+        mock_obj._decl_class_registry = {
+            'Foo': foo_mock,
+            'Bar': Mock(__table__=None),
+            'Baz': baz_mock,
+        }
+        document_classes = docs.get_document_classes()
+        assert document_classes == {
+            'Foo': foo_mock,
+            'Baz': baz_mock,
+        }
+
+    @patch.object(docs, 'BaseObject')
     def test_get_document_cls_key_error(self, mock_obj):
         mock_obj._decl_class_registry = {}
         with pytest.raises(ValueError) as ex:
@@ -55,6 +70,32 @@ class TestDocumentHelpers(object):
 
 
 class TestBaseMixin(object):
+
+    def test_get_es_mapping(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            my_id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+            groups = fields.ListField(
+                item_type=fields.StringField,
+                choices=['admin', 'user'])
+        memory_db()
+
+        mapping = MyModel.get_es_mapping()
+        assert mapping == {
+            'mymodel': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'groups': {'type': 'string'},
+                    'id': {'type': 'string'},
+                    'my_id': {'type': 'long'},
+                    'name': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
 
     def test_pk_field(self, memory_db):
         class MyModel(docs.BaseDocument):

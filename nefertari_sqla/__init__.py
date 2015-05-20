@@ -6,7 +6,7 @@ from zope.dottedname.resolve import resolve
 
 from .documents import (
     BaseDocument, ESBaseDocument, BaseMixin,
-    get_document_cls)
+    get_document_cls, get_document_classes)
 from .serializers import JSONEncoder, ESJSONSerializer
 from .signals import ESMetaclass
 from .utils import (
