@@ -117,10 +117,10 @@ class BaseMixin(object):
         }
         mapper = class_mapper(cls)
         columns = {c.key: c for c in mapper.columns}
+        # Replace field 'id' with primary key field
+        columns['id'] = columns.get(cls.pk_field())
 
         for name, column in columns.items():
-            if name == 'id':
-                column = columns.get(cls.pk_field())
             column_type = column.type
             if isinstance(column_type, types.ProcessableChoiceArray):
                 column_type = column_type.impl.item_type
