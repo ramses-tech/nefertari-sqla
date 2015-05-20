@@ -81,7 +81,7 @@ TYPES_MAP = {
 
     types.ProcessableDateTime: {'type': 'date', 'format': 'dateOptionalTime'},
     types.ProcessableDate: {'type': 'date', 'format': 'dateOptionalTime'},
-    types.ProcessableTime: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.ProcessableTime: {'type': 'date', 'format': 'HH:mm:ss'},
 }
 
 
@@ -107,6 +107,7 @@ class BaseMixin(object):
 
     @classmethod
     def get_es_mapping(cls):
+        """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
         properties = {}
         mapping = {
