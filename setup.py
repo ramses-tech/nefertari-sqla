@@ -15,7 +15,7 @@ install_requires = [
 
 setup(
     name='nefertari_sqla',
-    version="0.2.0",
+    version="0.2.1",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
