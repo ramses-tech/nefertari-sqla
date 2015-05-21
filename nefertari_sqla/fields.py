@@ -454,13 +454,17 @@ def Relationship(**kwargs):
     simple many-to-one references.
     """
     backref_pre = 'backref_'
-    kwargs['doc'] = kwargs.pop('help_text', None)
-    kwargs[backref_pre + 'doc'] = kwargs.pop(
-        backref_pre + 'help_text', None)
+    if 'help_text' in kwargs:
+        kwargs['doc'] = kwargs.pop('help_text', None)
+    if (backref_pre + 'help_text') in kwargs:
+        kwargs[backref_pre + 'doc'] = kwargs.pop(
+            backref_pre + 'help_text', None)
+
     kwargs = {k: v for k, v in kwargs.items()
               if k in relationship_kwargs
               or k[len(backref_pre):] in relationship_kwargs}
     rel_kw, backref_kw = {}, {}
+
     for key, val in kwargs.items():
         if key.startswith(backref_pre):
             key = key[len(backref_pre):]
