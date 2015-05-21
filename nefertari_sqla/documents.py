@@ -2,7 +2,8 @@ import copy
 import logging
 from datetime import datetime
 
-from sqlalchemy.orm import class_mapper, object_session, properties
+from sqlalchemy.orm import (
+    class_mapper, object_session, properties, attributes)
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -460,10 +461,6 @@ class BaseMixin(object):
                 self.update_iterables(new_value, key, unique=True, save=False)
             else:
                 setattr(self, key, new_value)
-
-        session = object_session(self)
-        session.add(self)
-        session.flush()
         return self
 
     @classmethod
@@ -600,6 +597,23 @@ class BaseMixin(object):
             session.refresh(value)
             yield (value.__class__, [value.to_dict()])
 
+    def _is_modified(self):
+        """ Determine if instance is modified.
+
+        For instance to be marked as 'modified', it should:
+          * Have PK field set (not newly created)
+          * Have state marked of modified
+          * Any of modified fields have new value
+        """
+        pk_set = getattr(self, self.pk_field(), None) is not None
+        state = attributes.instance_state(self)
+        modified = state.modified
+        if pk_set and modified:
+            for field in state.committed_state.keys():
+                history = state.get_history(field, self)
+                if history.added or history.deleted:
+                    return True
+
 
 class BaseDocument(BaseObject, BaseMixin):
     """ Base class for SQLA models.
@@ -613,7 +627,7 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
 
     def _bump_version(self):
-        if getattr(self, self.pk_field(), None):
+        if self._is_modified():
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
@@ -636,9 +650,13 @@ class BaseDocument(BaseObject, BaseMixin):
                 extra={'data': e})
 
     def update(self, params):
-        self._bump_version()
         try:
-            return self._update(params)
+            self._update(params)
+            self._bump_version()
+            session = object_session(self)
+            session.add(self)
+            session.flush()
+            return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
                 raise  # other error, not duplicate

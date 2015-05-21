@@ -343,8 +343,7 @@ class TestBaseMixin(object):
         assert one.id == 7
         assert one.name == 'q'
 
-    @patch.object(docs, 'object_session')
-    def test_underscore_update(self, obj_session, memory_db):
+    def test_underscore_update(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
@@ -355,9 +354,6 @@ class TestBaseMixin(object):
         myobj = MyModel(id=4, name='foo')
         newobj = myobj._update(
             {'id': 5, 'name': 'bar', 'settings': {'sett1': 'val1'}})
-        obj_session.assert_called_once_with(myobj)
-        obj_session().add.assert_called_once_with(myobj)
-        obj_session().flush.assert_called_once_with()
         assert newobj.id == 4
         assert newobj.name == 'bar'
         assert newobj.settings == {'sett1': 'val1'}
@@ -524,6 +520,31 @@ class TestBaseMixin(object):
         result = [v for v in parent.get_reference_documents()]
         assert len(result) == 0
 
+    def test_is_modified_id_not_set(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model()
+        assert obj.id is None
+        assert not obj._is_modified()
+
+    def test_is_modified_no_modified_fields(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1).save()
+        assert not obj._is_modified()
+
+    def test_is_modified_same_value_set(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo').save()
+        obj = simple_model.get(id=1)
+        obj.name = 'foo'
+        assert not obj._is_modified()
+
+    def test_is_modified(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo').save()
+        obj = simple_model.get(id=1)
+        obj.name = 'bar'
+        assert obj._is_modified()
+
 
 class TestBaseDocument(object):
 
@@ -567,13 +588,17 @@ class TestBaseDocument(object):
             simple_model(id=4).save()
         assert 'There was a conflict' in str(ex.value)
 
+    @patch.object(docs, 'object_session')
     @patch.object(docs.BaseMixin, '_update')
-    def test_update(self, mock_upd, simple_model, memory_db):
+    def test_update(self, mock_upd, mock_sess, simple_model, memory_db):
         memory_db()
 
         myobj = simple_model(id=4)
         myobj.update({'name': 'q'})
         mock_upd.assert_called_once_with({'name': 'q'})
+        mock_sess.assert_called_once_with(myobj)
+        mock_sess().add.assert_called_once_with(myobj)
+        mock_sess().flush.assert_called_once_with()
 
     @patch.object(docs.BaseMixin, '_update')
     def test_update_error(self, mock_upd, simple_model, memory_db):
