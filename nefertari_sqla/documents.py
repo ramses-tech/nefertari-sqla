@@ -601,14 +601,12 @@ class BaseMixin(object):
         """ Determine if instance is modified.
 
         For instance to be marked as 'modified', it should:
-          * Have PK field set (not newly created)
-          * Have state marked of modified
+          * Have state marked as modified
+          * Have state marked as persistent
           * Any of modified fields have new value
         """
-        pk_set = getattr(self, self.pk_field(), None) is not None
         state = attributes.instance_state(self)
-        modified = state.modified
-        if pk_set and modified:
+        if state.persistent and state.modified:
             for field in state.committed_state.keys():
                 history = state.get_history(field, self)
                 if history.added or history.deleted:
@@ -636,6 +634,7 @@ class BaseDocument(BaseObject, BaseMixin):
         self._bump_version()
         session = session or Session()
         try:
+            self.clean()
             session.add(self)
             session.flush()
             session.expire(self)
@@ -653,6 +652,7 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             self._update(params)
             self._bump_version()
+            self.clean()
             session = object_session(self)
             session.add(self)
             session.flush()
@@ -665,6 +665,26 @@ class BaseDocument(BaseObject, BaseMixin):
                 detail='Resource `{}` already exists.'.format(
                     self.__class__.__name__),
                 extra={'data': e})
+
+    def clean(self):
+        """ Apply field processors to all changed fields And perform custom
+        field values cleaning before running DB validation.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        state = attributes.instance_state(self)
+        changed_columns = state.committed_state.keys()
+
+        for name in changed_columns:
+            column = columns[name]
+            if hasattr(column, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = column.apply_processors(
+                    instance=self, new_value=new_value)
+                setattr(self, name, processed_value)
 
 
 class ESBaseDocument(BaseDocument):

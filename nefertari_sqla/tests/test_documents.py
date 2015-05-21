@@ -520,10 +520,9 @@ class TestBaseMixin(object):
         result = [v for v in parent.get_reference_documents()]
         assert len(result) == 0
 
-    def test_is_modified_id_not_set(self, memory_db, simple_model):
+    def test_is_modified_id_not_persistent(self, memory_db, simple_model):
         memory_db()
         obj = simple_model()
-        assert obj.id is None
         assert not obj._is_modified()
 
     def test_is_modified_no_modified_fields(self, memory_db, simple_model):
@@ -556,10 +555,9 @@ class TestBaseDocument(object):
         assert myobj._version is None
         assert myobj.updated_at is None
         myobj._bump_version()
-        assert myobj._version is None
-        assert myobj.updated_at is None
 
-        myobj.id = 1
+        myobj.save()
+        myobj.name = 'foo'
         myobj._bump_version()
         assert myobj._version == 1
         assert isinstance(myobj.updated_at, datetime)
@@ -571,7 +569,7 @@ class TestBaseDocument(object):
         myobj = simple_model(id=4)
         newobj = myobj.save()
         assert newobj == myobj
-        assert myobj._version == 1
+        assert myobj._version is None
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
@@ -611,6 +609,34 @@ class TestBaseDocument(object):
         with pytest.raises(JHTTPConflict) as ex:
             simple_model(id=4).update({'name': 'q'})
         assert 'There was a conflict' in str(ex.value)
+
+    def test_clean_new_object(self, memory_db):
+        processor = lambda instance, new_value: 'foobar'
+
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField(processors=[processor])
+        memory_db()
+
+        obj = MyModel(name='myname')
+        obj.clean()
+        assert obj.name == 'foobar'
+
+    def test_clean_existing_object(self, memory_db):
+        processor = lambda instance, new_value: new_value.lower()
+
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField(processors=[processor])
+        memory_db()
+
+        obj = MyModel(id=1, name='myname').save()
+        obj = MyModel.get(id=1)
+        obj.name = 'SUPERNAME'
+        obj.clean()
+        assert obj.name == 'supername'
 
 
 class TestGetCollection(object):
