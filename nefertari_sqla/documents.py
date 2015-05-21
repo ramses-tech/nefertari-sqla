@@ -679,7 +679,7 @@ class BaseDocument(BaseObject, BaseMixin):
 
         if state.persistent:
             changed_columns = state.committed_state.keys()
-        else:
+        else:  # New object
             changed_columns = columns.keys()
 
         for name in changed_columns:
