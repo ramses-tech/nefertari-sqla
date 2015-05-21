@@ -676,7 +676,11 @@ class BaseDocument(BaseObject, BaseMixin):
         """
         columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
-        changed_columns = state.committed_state.keys()
+
+        if state.persistent:
+            changed_columns = state.committed_state.keys()
+        else:
+            changed_columns = columns.keys()
 
         for name in changed_columns:
             column = columns[name]

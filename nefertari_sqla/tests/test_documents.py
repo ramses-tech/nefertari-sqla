@@ -617,26 +617,33 @@ class TestBaseDocument(object):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
         memory_db()
 
         obj = MyModel(name='myname')
         obj.clean()
         assert obj.name == 'foobar'
+        assert obj.email == 'foobar'
 
     def test_clean_existing_object(self, memory_db):
-        processor = lambda instance, new_value: new_value.lower()
+        processor = lambda instance, new_value: new_value + '-'
 
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
         memory_db()
 
-        obj = MyModel(id=1, name='myname').save()
+        obj = MyModel(id=1, name='myname', email='FOO').save()
+        assert obj.name == 'myname-'
+        assert obj.email == 'FOO-'
+
         obj = MyModel.get(id=1)
-        obj.name = 'SUPERNAME'
+        obj.name = 'supername'
         obj.clean()
-        assert obj.name == 'supername'
+        assert obj.name == 'supername-'
+        assert obj.email == 'FOO-'
 
 
 class TestGetCollection(object):
