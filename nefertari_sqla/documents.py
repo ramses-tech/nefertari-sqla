@@ -503,6 +503,7 @@ class BaseMixin(object):
 
     @classmethod
     def get_null_values(cls):
+        """ Get null values of :cls: fields. """
         null_values = {}
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
