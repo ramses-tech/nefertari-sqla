@@ -378,10 +378,29 @@ class TestBaseMixin(object):
         assert mock_session().delete.call_count == 2
         mock_session().flush.assert_called_once_with()
 
+    @patch.object(docs, 'on_bulk_delete')
+    def test_underscore_delete_many_query(self, mock_on_bulk):
+        from sqlalchemy.orm.query import Query
+        items = Query('asd')
+        items.all = Mock(return_value=[1, 2, 3])
+        items.delete = Mock()
+        docs.BaseMixin._delete_many(items)
+        items.delete.assert_called_once_with(
+            synchronize_session=False)
+        mock_on_bulk.assert_called_once_with(docs.BaseMixin, [1, 2, 3])
+
     def test_underscore_update_many(self):
         item = Mock()
         docs.BaseMixin._update_many([item], foo='bar')
         item.update.assert_called_once_with({'foo': 'bar'})
+
+    def test_underscore_update_many_query(self):
+        from sqlalchemy.orm.query import Query
+        items = Query('asd')
+        items.update = Mock()
+        docs.BaseMixin._update_many(items, foo='bar')
+        items.update.assert_called_once_with(
+            {'foo': 'bar'}, synchronize_session='fetch')
 
     def test_repr(self):
         obj = docs.BaseMixin()
