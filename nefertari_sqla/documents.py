@@ -7,6 +7,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 
 from nefertari.json_httpexceptions import (
@@ -117,7 +118,7 @@ class BaseMixin(object):
             }
         }
         mapper = class_mapper(cls)
-        columns = {c.key: c for c in mapper.columns}
+        columns = {c.name: c for c in mapper.columns}
         # Replace field 'id' with primary key field
         columns['id'] = columns.get(cls.pk_field())
 
@@ -497,6 +498,21 @@ class BaseMixin(object):
         cls_id = getattr(cls, cls.pk_field())
         return query_set.from_self().filter(cls_id.in_(ids)).limit(len(ids))
 
+    @classmethod
+    def get_null_values(cls):
+        """ Get null values of :cls: fields. """
+        null_values = {}
+        mapper = class_mapper(cls)
+        columns = {c.name: c for c in mapper.columns}
+        columns.update({r.key: r for r in mapper.relationships})
+        for name, col in columns.items():
+            if isinstance(col, RelationshipProperty) and col.uselist:
+                value = []
+            else:
+                value = None
+            null_values[name] = value
+        return null_values
+
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
         _data = {}
@@ -534,10 +550,13 @@ class BaseMixin(object):
                     pos_keys.append(key.strip())
             return pos_keys, neg_keys
 
-        def update_dict():
+        def update_dict(update_params):
             final_value = getattr(self, attr, {}) or {}
             final_value = final_value.copy()
-            positive, negative = split_keys(params.keys())
+            if update_params is None:
+                update_params = {
+                    '-' + key: val for key, val in final_value.items()}
+            positive, negative = split_keys(update_params.keys())
 
             # Pop negative keys
             for key in negative:
@@ -545,7 +564,7 @@ class BaseMixin(object):
 
             # Set positive keys
             for key in positive:
-                final_value[unicode(key)] = params[key]
+                final_value[unicode(key)] = update_params[key]
 
             setattr(self, attr, final_value)
             if save:
@@ -553,10 +572,13 @@ class BaseMixin(object):
                 session.add(self)
                 session.flush()
 
-        def update_list():
+        def update_list(update_params):
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            keys = params.keys() if isinstance(params, dict) else params
+            if update_params is None:
+                update_params = ['-' + val for val in final_value]
+            keys = (update_params.keys() if isinstance(update_params, dict)
+                    else update_params)
             positive, negative = split_keys(keys)
 
             if not (positive + negative):
@@ -577,9 +599,9 @@ class BaseMixin(object):
                 session.flush()
 
         if is_dict:
-            update_dict()
+            update_dict(params)
         elif is_list:
-            update_list()
+            update_list(params)
 
     def get_reference_documents(self):
         # TODO: Make lazy load of documents

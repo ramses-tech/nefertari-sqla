@@ -389,7 +389,7 @@ class TestBaseMixin(object):
     def test_get_by_ids(self, mock_coll, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            name = fields.IdField(primary_key=True)
+            name = fields.StringField(primary_key=True)
         memory_db()
         MyModel.name = Mock()
         MyModel.get_by_ids([1, 2, 3], foo='bar')
@@ -397,6 +397,35 @@ class TestBaseMixin(object):
         MyModel.name.in_.assert_called_once_with([1, 2, 3])
         assert mock_coll().from_self().filter.call_count == 1
         mock_coll().from_self().filter().limit.assert_called_once_with(3)
+
+    def test_get_null_values(self, memory_db):
+        class MyModel1(docs.BaseDocument):
+            __tablename__ = 'mymodel1'
+            name = fields.StringField(primary_key=True)
+            fk_field = fields.ForeignKeyField(
+                ref_document='MyModel2', ref_column='mymodel2.name',
+                ref_column_type=fields.StringField)
+
+        class MyModel2(docs.BaseDocument):
+            __tablename__ = 'mymodel2'
+            name = fields.StringField(primary_key=True)
+            models1 = fields.Relationship(
+                document='MyModel1', backref_name='model2')
+
+        assert MyModel1.get_null_values() == {
+            '_version': None,
+            'fk_field': None,
+            'name': None,
+            'model2': None,
+            'updated_at': None,
+        }
+
+        assert MyModel2.get_null_values() == {
+            '_version': None,
+            'models1': [],
+            'name': None,
+            'updated_at': None,
+        }
 
     def test_to_dict(self, memory_db):
         class MyModel(docs.BaseDocument):
