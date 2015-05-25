@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -47,18 +48,37 @@ def on_after_delete(mapper, connection, target):
 
 
 def on_bulk_update(update_context):
-    objects = update_context.query.all()
-    if not objects:
+    model_cls = update_context.mapper.entity
+    if not getattr(model_cls, '_index_enabled', False):
         return
 
-    model_cls = type(objects[0])
-    if not getattr(model_cls, '_index_enabled', False):
+    objects = update_context.query.all()
+    if not objects:
         return
 
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
     documents = to_dicts(objects)
     es.index(documents)
+
+
+def on_bulk_delete(delete_context):
+    model_cls = delete_context.mapper.entity
+    if not getattr(model_cls, '_index_enabled', False):
+        return
+
+    # Run SQL statements again, to fetch objects that will be
+    # deleted on session commit
+    query = delete_context.query.statement.execute()
+    values_tuples = query.fetchall()
+
+    pk_field = model_cls.pk_field()
+    pk_index = query.keys().index(pk_field)
+    ids = [tup[pk_index] for tup in values_tuples]
+
+    from nefertari.elasticsearch import ES
+    es = ES(source=model_cls.__name__)
+    es.delete(ids)
 
 
 def setup_es_signals_for(source_cls):
@@ -69,6 +89,7 @@ def setup_es_signals_for(source_cls):
 
 
 event.listen(Session, 'after_bulk_update', on_bulk_update)
+event.listen(Session, 'after_bulk_delete', on_bulk_delete)
 
 
 class ESMetaclass(DeclarativeMeta):

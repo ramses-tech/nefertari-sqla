@@ -472,7 +472,13 @@ class BaseMixin(object):
         object_session(obj).delete(obj)
 
     @classmethod
-    def _delete_many(cls, items):
+    def _delete_many(cls, items, synchronize_session=False):
+        if isinstance(items, Query):
+            try:
+                return items.delete(
+                    synchronize_session=synchronize_session)
+            except Exception as ex:
+                log.error(str(ex))
         session = Session()
         for item in items:
             session.delete(item)
