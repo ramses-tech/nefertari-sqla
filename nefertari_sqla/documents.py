@@ -14,7 +14,7 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
-from .signals import ESMetaclass
+from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, DateTimeField, IntegerField
 from . import types
 
@@ -473,10 +473,27 @@ class BaseMixin(object):
 
     @classmethod
     def _delete_many(cls, items, synchronize_session=False):
+        """ Delete :items: queryset or objects list.
+
+        When queryset passed, Query.delete() is used to delete it. Note that
+        queryset may not have limit(), offset(), order_by(), group_by(), or
+        distinct() called on it.
+
+        If some of the methods listed above were called, or :items: is not
+        a Query instance, one-by-one items update is performed.
+
+        `on_bulk_delete` function is called to delete objects from index
+        and to reindex relationships. This is done explicitly because it is
+        impossible to get access to deleted objects in signal handler for
+        'after_bulk_delete' ORM event.
+        """
         if isinstance(items, Query):
             try:
-                return items.delete(
+                delete_items = items.all()
+                items.delete(
                     synchronize_session=synchronize_session)
+                on_bulk_delete(cls, delete_items)
+                return
             except Exception as ex:
                 log.error(str(ex))
         session = Session()
@@ -489,11 +506,11 @@ class BaseMixin(object):
         """ Update :items: queryset or objects list.
 
         When queryset passed, Query.update() is used to update it. Note that
-        queryset may not jave limit(), offset(), order_by(), group_by(), or
+        queryset may not have limit(), offset(), order_by(), group_by(), or
         distinct() called on it.
 
-        Or some of above methods were called, or :items: is not a Query
-        instance, one-by-one items update is performed.
+        If some of the methods listed above were called, or :items: is not
+        a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
             try:
