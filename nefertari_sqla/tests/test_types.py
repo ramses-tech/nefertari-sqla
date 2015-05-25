@@ -14,27 +14,6 @@ class DemoClass(object):
         pass
 
 
-class TestProcessableMixin(object):
-
-    class Processable(types.ProcessableMixin, DemoClass):
-        pass
-
-    def test_process_bind_param(self):
-        processors = [
-            lambda v: v.lower(),
-            lambda v: v.strip(),
-            lambda v: 'Processed ' + v,
-        ]
-        mixin = self.Processable(processors=processors)
-        value = mixin.process_bind_param(' WeIrd ValUE   ', None)
-        assert value == 'Processed weird value'
-
-    def test_process_bind_param_no_processors(self):
-        mixin = self.Processable()
-        value = mixin.process_bind_param(' WeIrd ValUE   ', None)
-        assert value == ' WeIrd ValUE   '
-
-
 class TestLengthLimitedStringMixin(object):
 
     class Limited(types.LengthLimitedStringMixin, DemoClass):
@@ -154,15 +133,6 @@ class TestProcessableChoice(object):
         field = types.ProcessableChoice(choices=['foo'])
         try:
             field.process_bind_param('foo', None)
-        except ValueError:
-            raise Exception('Unexpected error')
-
-    def test_processed_value_in_choices(self):
-        field = types.ProcessableChoice(
-            choices=['foo'],
-            processors=[lambda v: v.lower()])
-        try:
-            field.process_bind_param('FoO', None)
         except ValueError:
             raise Exception('Unexpected error')
 
