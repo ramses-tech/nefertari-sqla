@@ -3,6 +3,9 @@ import logging
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import object_session, class_mapper
+from pyramid_sqlalchemy import Session
+
+from nefertari.utils import to_dicts
 
 
 log = logging.getLogger(__name__)
@@ -43,11 +46,29 @@ def on_after_delete(mapper, connection, target):
     es.index_refs(target)
 
 
+def on_bulk_update(update_context):
+    objects = update_context.query.all()
+    if not objects:
+        return
+
+    model_cls = type(objects[0])
+    if not getattr(model_cls, '_index_enabled', False):
+        return
+
+    from nefertari.elasticsearch import ES
+    es = ES(source=model_cls.__name__)
+    documents = to_dicts(objects)
+    es.index(documents)
+
+
 def setup_es_signals_for(source_cls):
     event.listen(source_cls, 'after_insert', on_after_insert)
     event.listen(source_cls, 'after_update', on_after_update)
     event.listen(source_cls, 'after_delete', on_after_delete)
     log.info('setup_sqla_es_signals_for: %r' % source_cls)
+
+
+event.listen(Session, 'after_bulk_update', on_bulk_update)
 
 
 class ESMetaclass(DeclarativeMeta):

@@ -6,6 +6,7 @@ from sqlalchemy.orm import class_mapper, object_session, properties
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm.query import Query
 from pyramid_sqlalchemy import Session, BaseObject
 
 from nefertari.json_httpexceptions import (
@@ -239,10 +240,9 @@ class BaseMixin(object):
         if first:
             params['_limit'] = 1
             params['__raise_on_empty'] = True
-        params['query_set'] = query_set.from_self()
-        query_set = cls.get_collection(**params)
+            params['query_set'] = query_set.from_self()
+            query_set = cls.get_collection(**params)
 
-        if first:
             first_obj = query_set.first()
             if not first_obj:
                 msg = "'{}({}={})' resource not found".format(
@@ -479,7 +479,22 @@ class BaseMixin(object):
         session.flush()
 
     @classmethod
-    def _update_many(cls, items, **params):
+    def _update_many(cls, items, synchronize_session='fetch', **params):
+        """ Update :items: queryset or objects list.
+
+        When queryset passed, Query.update() is used to update it. Note that
+        queryset may not jave limit(), offset(), order_by(), group_by(), or
+        distinct() called on it.
+
+        Or some of above methods were called, or :items: is not a Query
+        instance, one-by-one items update is performed.
+        """
+        if isinstance(items, Query):
+            try:
+                return items.update(
+                    params, synchronize_session=synchronize_session)
+            except Exception as ex:
+                log.error(str(ex))
         for item in items:
             item.update(params)
 
