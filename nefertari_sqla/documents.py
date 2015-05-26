@@ -743,8 +743,8 @@ class BaseDocument(BaseObject, BaseMixin):
             changed_columns = columns.keys()
 
         for name in changed_columns:
-            column = columns[name]
-            if hasattr(column, 'apply_processors'):
+            column = columns.get(name)
+            if column is not None and hasattr(column, 'apply_processors'):
                 new_value = getattr(self, name)
                 processed_value = column.apply_processors(
                     instance=self, new_value=new_value)
