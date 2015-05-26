@@ -17,7 +17,7 @@ class DemoClass(object):
 class TestLengthLimitedStringMixin(object):
 
     class Limited(types.LengthLimitedStringMixin, DemoClass):
-        pass
+        _column_name = 'foo'
 
     def test_none_value(self):
         mixin = self.Limited(min_length=5)
@@ -30,7 +30,8 @@ class TestLengthLimitedStringMixin(object):
         mixin = self.Limited(min_length=5)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param('q', None)
-        assert str(ex.value) == 'Value length must be more than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value length must be more than 5')
         try:
             mixin.process_bind_param('asdasdasd', None)
         except ValueError:
@@ -40,7 +41,8 @@ class TestLengthLimitedStringMixin(object):
         mixin = self.Limited(max_length=5)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param('asdasdasdasdasd', None)
-        assert str(ex.value) == 'Value length must be less than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value length must be less than 5')
         try:
             mixin.process_bind_param('q', None)
         except ValueError:
@@ -50,10 +52,12 @@ class TestLengthLimitedStringMixin(object):
         mixin = self.Limited(max_length=5, min_length=2)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param('a', None)
-        assert str(ex.value) == 'Value length must be more than 2'
+        assert str(ex.value) == (
+            'Field `foo`: Value length must be more than 2')
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param('a12313123123', None)
-        assert str(ex.value) == 'Value length must be less than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value length must be less than 5')
         try:
             mixin.process_bind_param('12q', None)
         except ValueError:
@@ -63,7 +67,7 @@ class TestLengthLimitedStringMixin(object):
 class TestSizeLimitedNumberMixin(object):
 
     class Limited(types.SizeLimitedNumberMixin, DemoClass):
-        pass
+        _column_name = 'foo'
 
     def test_none_value(self):
         mixin = self.Limited(min_value=5)
@@ -76,7 +80,8 @@ class TestSizeLimitedNumberMixin(object):
         mixin = self.Limited(min_value=5)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param(1, None)
-        assert str(ex.value) == 'Value must be bigger than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value must be bigger than 5')
         try:
             mixin.process_bind_param(10, None)
         except ValueError:
@@ -86,7 +91,8 @@ class TestSizeLimitedNumberMixin(object):
         mixin = self.Limited(max_value=5)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param(10, None)
-        assert str(ex.value) == 'Value must be less than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value must be less than 5')
         try:
             mixin.process_bind_param(1, None)
         except ValueError:
@@ -96,10 +102,12 @@ class TestSizeLimitedNumberMixin(object):
         mixin = self.Limited(max_value=5, min_value=2)
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param(1, None)
-        assert str(ex.value) == 'Value must be bigger than 2'
+        assert str(ex.value) == (
+            'Field `foo`: Value must be bigger than 2')
         with pytest.raises(ValueError) as ex:
             mixin.process_bind_param(10, None)
-        assert str(ex.value) == 'Value must be less than 5'
+        assert str(ex.value) == (
+            'Field `foo`: Value must be less than 5')
         try:
             mixin.process_bind_param(3, None)
         except ValueError:
@@ -110,10 +118,11 @@ class TestProcessableChoice(object):
 
     def test_no_choices(self):
         field = types.ProcessableChoice()
+        field._column_name = 'foo'
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('foo', None)
         assert str(ex.value) == \
-            'Got an invalid choice `foo`. Valid choices: ()'
+            'Field `foo`: Got an invalid choice `foo`. Valid choices: ()'
 
     def test_none_value(self):
         field = types.ProcessableChoice()
@@ -124,10 +133,11 @@ class TestProcessableChoice(object):
 
     def test_value_not_in_choices(self):
         field = types.ProcessableChoice(choices=['foo'])
+        field._column_name = 'foo'
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('bar', None)
         assert str(ex.value) == \
-            'Got an invalid choice `bar`. Valid choices: (foo)'
+            'Field `foo`: Got an invalid choice `bar`. Valid choices: (foo)'
 
     def test_value_in_choices(self):
         field = types.ProcessableChoice(choices=['foo'])
@@ -260,10 +270,12 @@ class TestProcessableChoiceArray(object):
         field = types.ProcessableChoiceArray(
             item_type=fields.StringField,
             choices=['foo', 'bar'])
+        field._column_name = 'mycol'
         with pytest.raises(ValueError) as ex:
             field._validate_choices(['qoo', 'foo'])
         assert str(ex.value) == (
-            'Got invalid choices: (qoo). Valid choices: (foo, bar)')
+            'Field `mycol`: Got invalid choices: (qoo). '
+            'Valid choices: (foo, bar)')
 
     def test_process_bind_param_postgres(self):
         field = types.ProcessableChoiceArray(item_type=fields.StringField)
