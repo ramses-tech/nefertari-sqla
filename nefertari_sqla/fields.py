@@ -25,6 +25,20 @@ from .types import (
 )
 
 
+class ProcessableMixin(object):
+    """ Mixin that allows running callables on a value that
+    is being set on a field.
+    """
+    def __init__(self, *args, **kwargs):
+        self.processors = kwargs.pop('processors', ())
+        super(ProcessableMixin, self).__init__(*args, **kwargs)
+
+    def apply_processors(self, instance, new_value):
+        for proc in self.processors:
+            new_value = proc(instance=instance, new_value=new_value)
+        return new_value
+
+
 class BaseField(Column):
     """ Base plain column that otherwise would be created as
     sqlalchemy.Column(sqlalchemy.Type())
@@ -113,14 +127,14 @@ class BaseField(Column):
         return self.__class__
 
 
-class BigIntegerField(BaseField):
+class BigIntegerField(ProcessableMixin, BaseField):
     _sqla_type = LimitedBigInteger
-    _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
+    _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class BooleanField(BaseField):
+class BooleanField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableBoolean
-    _type_unchanged_kwargs = ('create_constraint', 'processors')
+    _type_unchanged_kwargs = ('create_constraint')
 
     def process_type_args(self, kwargs):
         """
@@ -135,33 +149,33 @@ class BooleanField(BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class DateField(BaseField):
+class DateField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableDate
-    _type_unchanged_kwargs = ('processors',)
+    _type_unchanged_kwargs = ()
 
 
-class DateTimeField(BaseField):
+class DateTimeField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableDateTime
-    _type_unchanged_kwargs = ('timezone', 'processors')
+    _type_unchanged_kwargs = ('timezone',)
 
 
-class ChoiceField(BaseField):
+class ChoiceField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableChoice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
-        '_warn_on_bytestring', 'choices', 'processors')
+        '_warn_on_bytestring', 'choices')
 
 
-class FloatField(BaseField):
+class FloatField(ProcessableMixin, BaseField):
     _sqla_type = LimitedFloat
     _type_unchanged_kwargs = (
         'precision', 'asdecimal', 'decimal_return_scale',
-        'min_value', 'max_value', 'processors')
+        'min_value', 'max_value')
 
 
-class IntegerField(BaseField):
+class IntegerField(ProcessableMixin, BaseField):
     _sqla_type = LimitedInteger
-    _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
+    _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
 class IdField(IntegerField):
@@ -171,46 +185,44 @@ class IdField(IntegerField):
     pass
 
 
-class IntervalField(BaseField):
+class IntervalField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableInterval
     _type_unchanged_kwargs = (
-        'native', 'second_precision', 'day_precision', 'processors')
+        'native', 'second_precision', 'day_precision')
 
 
-class BinaryField(BaseField):
+class BinaryField(ProcessableMixin, BaseField):
     _sqla_type = ProcessableLargeBinary
-    _type_unchanged_kwargs = ('length', 'processors')
+    _type_unchanged_kwargs = ('length',)
 
 # Since SQLAlchemy 1.0.0
 # class MatchField(BooleanField):
 #     _sqla_type = MatchType
 
 
-class DecimalField(BaseField):
+class DecimalField(ProcessableMixin, BaseField):
     _sqla_type = LimitedNumeric
     _type_unchanged_kwargs = (
         'precision', 'scale', 'decimal_return_scale', 'asdecimal',
-        'min_value', 'max_value', 'processors')
+        'min_value', 'max_value')
 
 
-class PickleField(BaseField):
+class PickleField(ProcessableMixin, BaseField):
     _sqla_type = ProcessablePickleType
     _type_unchanged_kwargs = (
-        'protocol', 'pickler', 'comparator',
-        'processors')
+        'protocol', 'pickler', 'comparator')
 
 
-class SmallIntegerField(BaseField):
+class SmallIntegerField(ProcessableMixin, BaseField):
     _sqla_type = LimitedSmallInteger
-    _type_unchanged_kwargs = ('min_value', 'max_value', 'processors')
+    _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class StringField(BaseField):
+class StringField(ProcessableMixin, BaseField):
     _sqla_type = LimitedString
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
-        '_warn_on_bytestring', 'min_length', 'max_length',
-        'processors')
+        '_warn_on_bytestring', 'min_length', 'max_length')
 
     def process_type_args(self, kwargs):
         """

@@ -2,11 +2,13 @@ import copy
 import logging
 from datetime import datetime
 
-from sqlalchemy.orm import class_mapper, object_session, properties
+from sqlalchemy.orm import (
+    class_mapper, object_session, properties, attributes)
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 
 from nefertari.json_httpexceptions import (
@@ -117,7 +119,7 @@ class BaseMixin(object):
             }
         }
         mapper = class_mapper(cls)
-        columns = {c.key: c for c in mapper.columns}
+        columns = {c.name: c for c in mapper.columns}
         # Replace field 'id' with primary key field
         columns['id'] = columns.get(cls.pk_field())
 
@@ -460,10 +462,6 @@ class BaseMixin(object):
                 self.update_iterables(new_value, key, unique=True, save=False)
             else:
                 setattr(self, key, new_value)
-
-        session = object_session(self)
-        session.add(self)
-        session.flush()
         return self
 
     @classmethod
@@ -538,6 +536,21 @@ class BaseMixin(object):
         cls_id = getattr(cls, cls.pk_field())
         return query_set.from_self().filter(cls_id.in_(ids)).limit(len(ids))
 
+    @classmethod
+    def get_null_values(cls):
+        """ Get null values of :cls: fields. """
+        null_values = {}
+        mapper = class_mapper(cls)
+        columns = {c.name: c for c in mapper.columns}
+        columns.update({r.key: r for r in mapper.relationships})
+        for name, col in columns.items():
+            if isinstance(col, RelationshipProperty) and col.uselist:
+                value = []
+            else:
+                value = None
+            null_values[name] = value
+        return null_values
+
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
         _data = {}
@@ -575,10 +588,13 @@ class BaseMixin(object):
                     pos_keys.append(key.strip())
             return pos_keys, neg_keys
 
-        def update_dict():
+        def update_dict(update_params):
             final_value = getattr(self, attr, {}) or {}
             final_value = final_value.copy()
-            positive, negative = split_keys(params.keys())
+            if update_params is None:
+                update_params = {
+                    '-' + key: val for key, val in final_value.items()}
+            positive, negative = split_keys(update_params.keys())
 
             # Pop negative keys
             for key in negative:
@@ -586,7 +602,7 @@ class BaseMixin(object):
 
             # Set positive keys
             for key in positive:
-                final_value[unicode(key)] = params[key]
+                final_value[unicode(key)] = update_params[key]
 
             setattr(self, attr, final_value)
             if save:
@@ -594,10 +610,13 @@ class BaseMixin(object):
                 session.add(self)
                 session.flush()
 
-        def update_list():
+        def update_list(update_params):
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            keys = params.keys() if isinstance(params, dict) else params
+            if update_params is None:
+                update_params = ['-' + val for val in final_value]
+            keys = (update_params.keys() if isinstance(update_params, dict)
+                    else update_params)
             positive, negative = split_keys(keys)
 
             if not (positive + negative):
@@ -618,9 +637,9 @@ class BaseMixin(object):
                 session.flush()
 
         if is_dict:
-            update_dict()
+            update_dict(params)
         elif is_list:
-            update_list()
+            update_list(params)
 
     def get_reference_documents(self):
         # TODO: Make lazy load of documents
@@ -638,6 +657,21 @@ class BaseMixin(object):
             session.refresh(value)
             yield (value.__class__, [value.to_dict()])
 
+    def _is_modified(self):
+        """ Determine if instance is modified.
+
+        For instance to be marked as 'modified', it should:
+          * Have state marked as modified
+          * Have state marked as persistent
+          * Any of modified fields have new value
+        """
+        state = attributes.instance_state(self)
+        if state.persistent and state.modified:
+            for field in state.committed_state.keys():
+                history = state.get_history(field, self)
+                if history.added or history.deleted:
+                    return True
+
 
 class BaseDocument(BaseObject, BaseMixin):
     """ Base class for SQLA models.
@@ -651,7 +685,7 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
 
     def _bump_version(self):
-        if getattr(self, self.pk_field(), None):
+        if self._is_modified():
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
@@ -660,6 +694,7 @@ class BaseDocument(BaseObject, BaseMixin):
         self._bump_version()
         session = session or Session()
         try:
+            self.clean()
             session.add(self)
             session.flush()
             session.expire(self)
@@ -674,9 +709,14 @@ class BaseDocument(BaseObject, BaseMixin):
                 extra={'data': e})
 
     def update(self, params):
-        self._bump_version()
         try:
-            return self._update(params)
+            self._update(params)
+            self._bump_version()
+            self.clean()
+            session = object_session(self)
+            session.add(self)
+            session.flush()
+            return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
                 raise  # other error, not duplicate
@@ -685,6 +725,30 @@ class BaseDocument(BaseObject, BaseMixin):
                 detail='Resource `{}` already exists.'.format(
                     self.__class__.__name__),
                 extra={'data': e})
+
+    def clean(self, force_all=False):
+        """ Apply field processors to all changed fields And perform custom
+        field values cleaning before running DB validation.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        state = attributes.instance_state(self)
+
+        if state.persistent and not force_all:
+            changed_columns = state.committed_state.keys()
+        else:  # New object
+            changed_columns = columns.keys()
+
+        for name in changed_columns:
+            column = columns[name]
+            if hasattr(column, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = column.apply_processors(
+                    instance=self, new_value=new_value)
+                setattr(self, name, processed_value)
 
 
 class ESBaseDocument(BaseDocument):
