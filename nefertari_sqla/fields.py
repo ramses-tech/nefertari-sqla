@@ -75,7 +75,17 @@ class BaseField(Column):
         # Column init when defining a schema
         else:
             col_kw['type_'] = self._sqla_type(*type_args, **type_kw)
-        return super(BaseField, self).__init__(**col_kw)
+        super(BaseField, self).__init__(**col_kw)
+
+    def __setattr__(self, key, value):
+        """ Store column name on 'self.type'
+
+        This allows error messages in custom types' validation be more
+        explicit.
+        """
+        if value is not None and key == 'name':
+            self.type._column_name = value
+        return super(BaseField, self).__setattr__(key, value)
 
     def process_type_args(self, kwargs):
         """ Process arguments of a sqla Type.
@@ -125,7 +135,6 @@ class BaseField(Column):
     @property
     def _constructor(self):
         return self.__class__
-
 
 class BigIntegerField(ProcessableMixin, BaseField):
     _sqla_type = LimitedBigInteger
