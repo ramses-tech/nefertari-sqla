@@ -688,7 +688,7 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def clean(self):
+    def clean(self, force_all=False):
         """ Apply field processors to all changed fields And perform custom
         field values cleaning before running DB validation.
 
@@ -699,7 +699,7 @@ class BaseDocument(BaseObject, BaseMixin):
         columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
 
-        if state.persistent:
+        if state.persistent and not force_all:
             changed_columns = state.committed_state.keys()
         else:  # New object
             changed_columns = columns.keys()
