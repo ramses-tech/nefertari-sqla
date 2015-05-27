@@ -22,6 +22,21 @@ class TestDocumentHelpers(object):
         assert doc_cls == 'bar'
 
     @patch.object(docs, 'BaseObject')
+    def test_get_document_classes(self, mock_obj):
+        foo_mock = Mock(__table__='foo')
+        baz_mock = Mock(__tablename__='baz')
+        mock_obj._decl_class_registry = {
+            'Foo': foo_mock,
+            'Bar': Mock(__table__=None),
+            'Baz': baz_mock,
+        }
+        document_classes = docs.get_document_classes()
+        assert document_classes == {
+            'Foo': foo_mock,
+            'Baz': baz_mock,
+        }
+
+    @patch.object(docs, 'BaseObject')
     def test_get_document_cls_key_error(self, mock_obj):
         mock_obj._decl_class_registry = {}
         with pytest.raises(ValueError) as ex:
@@ -55,6 +70,32 @@ class TestDocumentHelpers(object):
 
 
 class TestBaseMixin(object):
+
+    def test_get_es_mapping(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            my_id = fields.IdField()
+            name = fields.StringField(primary_key=True)
+            groups = fields.ListField(
+                item_type=fields.StringField,
+                choices=['admin', 'user'])
+        memory_db()
+
+        mapping = MyModel.get_es_mapping()
+        assert mapping == {
+            'mymodel': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'groups': {'type': 'string'},
+                    'id': {'type': 'string'},
+                    'my_id': {'type': 'long'},
+                    'name': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
 
     def test_pk_field(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -302,8 +343,7 @@ class TestBaseMixin(object):
         assert one.id == 7
         assert one.name == 'q'
 
-    @patch.object(docs, 'object_session')
-    def test_underscore_update(self, obj_session, memory_db):
+    def test_underscore_update(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
@@ -314,9 +354,6 @@ class TestBaseMixin(object):
         myobj = MyModel(id=4, name='foo')
         newobj = myobj._update(
             {'id': 5, 'name': 'bar', 'settings': {'sett1': 'val1'}})
-        obj_session.assert_called_once_with(myobj)
-        obj_session().add.assert_called_once_with(myobj)
-        obj_session().flush.assert_called_once_with()
         assert newobj.id == 4
         assert newobj.name == 'bar'
         assert newobj.settings == {'sett1': 'val1'}
@@ -352,7 +389,7 @@ class TestBaseMixin(object):
     def test_get_by_ids(self, mock_coll, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
-            name = fields.IdField(primary_key=True)
+            name = fields.StringField(primary_key=True)
         memory_db()
         MyModel.name = Mock()
         MyModel.get_by_ids([1, 2, 3], foo='bar')
@@ -360,6 +397,35 @@ class TestBaseMixin(object):
         MyModel.name.in_.assert_called_once_with([1, 2, 3])
         assert mock_coll().from_self().filter.call_count == 1
         mock_coll().from_self().filter().limit.assert_called_once_with(3)
+
+    def test_get_null_values(self, memory_db):
+        class MyModel1(docs.BaseDocument):
+            __tablename__ = 'mymodel1'
+            name = fields.StringField(primary_key=True)
+            fk_field = fields.ForeignKeyField(
+                ref_document='MyModel2', ref_column='mymodel2.name',
+                ref_column_type=fields.StringField)
+
+        class MyModel2(docs.BaseDocument):
+            __tablename__ = 'mymodel2'
+            name = fields.StringField(primary_key=True)
+            models1 = fields.Relationship(
+                document='MyModel1', backref_name='model2')
+
+        assert MyModel1.get_null_values() == {
+            '_version': None,
+            'fk_field': None,
+            'name': None,
+            'model2': None,
+            'updated_at': None,
+        }
+
+        assert MyModel2.get_null_values() == {
+            '_version': None,
+            'models1': [],
+            'name': None,
+            'updated_at': None,
+        }
 
     def test_to_dict(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -483,6 +549,30 @@ class TestBaseMixin(object):
         result = [v for v in parent.get_reference_documents()]
         assert len(result) == 0
 
+    def test_is_modified_id_not_persistent(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model()
+        assert not obj._is_modified()
+
+    def test_is_modified_no_modified_fields(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1).save()
+        assert not obj._is_modified()
+
+    def test_is_modified_same_value_set(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo').save()
+        obj = simple_model.get(id=1)
+        obj.name = 'foo'
+        assert not obj._is_modified()
+
+    def test_is_modified(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo').save()
+        obj = simple_model.get(id=1)
+        obj.name = 'bar'
+        assert obj._is_modified()
+
 
 class TestBaseDocument(object):
 
@@ -494,10 +584,9 @@ class TestBaseDocument(object):
         assert myobj._version is None
         assert myobj.updated_at is None
         myobj._bump_version()
-        assert myobj._version is None
-        assert myobj.updated_at is None
 
-        myobj.id = 1
+        myobj.save()
+        myobj.name = 'foo'
         myobj._bump_version()
         assert myobj._version == 1
         assert isinstance(myobj.updated_at, datetime)
@@ -509,7 +598,7 @@ class TestBaseDocument(object):
         myobj = simple_model(id=4)
         newobj = myobj.save()
         assert newobj == myobj
-        assert myobj._version == 1
+        assert myobj._version is None
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
@@ -526,13 +615,17 @@ class TestBaseDocument(object):
             simple_model(id=4).save()
         assert 'There was a conflict' in str(ex.value)
 
+    @patch.object(docs, 'object_session')
     @patch.object(docs.BaseMixin, '_update')
-    def test_update(self, mock_upd, simple_model, memory_db):
+    def test_update(self, mock_upd, mock_sess, simple_model, memory_db):
         memory_db()
 
         myobj = simple_model(id=4)
         myobj.update({'name': 'q'})
         mock_upd.assert_called_once_with({'name': 'q'})
+        mock_sess.assert_called_once_with(myobj)
+        mock_sess().add.assert_called_once_with(myobj)
+        mock_sess().flush.assert_called_once_with()
 
     @patch.object(docs.BaseMixin, '_update')
     def test_update_error(self, mock_upd, simple_model, memory_db):
@@ -545,6 +638,41 @@ class TestBaseDocument(object):
         with pytest.raises(JHTTPConflict) as ex:
             simple_model(id=4).update({'name': 'q'})
         assert 'There was a conflict' in str(ex.value)
+
+    def test_clean_new_object(self, memory_db):
+        processor = lambda instance, new_value: 'foobar'
+
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+        memory_db()
+
+        obj = MyModel(name='myname')
+        obj.clean()
+        assert obj.name == 'foobar'
+        assert obj.email == 'foobar'
+
+    def test_clean_existing_object(self, memory_db):
+        processor = lambda instance, new_value: new_value + '-'
+
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+            name = fields.StringField(processors=[processor])
+            email = fields.StringField(processors=[processor])
+        memory_db()
+
+        obj = MyModel(id=1, name='myname', email='FOO').save()
+        assert obj.name == 'myname-'
+        assert obj.email == 'FOO-'
+
+        obj = MyModel.get(id=1)
+        obj.name = 'supername'
+        obj.clean()
+        assert obj.name == 'supername-'
+        assert obj.email == 'FOO-'
 
 
 class TestGetCollection(object):

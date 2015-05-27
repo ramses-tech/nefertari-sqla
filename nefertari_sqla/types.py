@@ -5,22 +5,10 @@ from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
 
 
-class ProcessableMixin(object):
-    """ Mixin that allows running callables on a value that
-    is being set to a field.
-    """
-    def __init__(self, *args, **kwargs):
-        self.processors = kwargs.pop('processors', ())
-        super(ProcessableMixin, self).__init__(*args, **kwargs)
-
-    def process_bind_param(self, value, dialect):
-        for proc in self.processors:
-            value = proc(value)
-        return value
-
-
-class LengthLimitedStringMixin(ProcessableMixin):
+class LengthLimitedStringMixin(object):
     """ Mixin for custom string types which may be length limited. """
+    _column_name = None
+
     def __init__(self, *args, **kwargs):
         self.min_length = kwargs.pop('min_length', None)
         self.max_length = kwargs.pop('max_length', None)
@@ -29,36 +17,38 @@ class LengthLimitedStringMixin(ProcessableMixin):
         super(LengthLimitedStringMixin, self).__init__(*args, **kwargs)
 
     def process_bind_param(self, value, dialect):
-        value = super(LengthLimitedStringMixin, self).process_bind_param(
-            value, dialect)
         if value is not None:
             if (self.min_length is not None) and len(value) < self.min_length:
-                raise ValueError('Value length must be more than {}'.format(
-                    self.min_length))
+                raise ValueError(
+                    'Field `{}`: Value length must be more than {}'.format(
+                        self._column_name, self.min_length))
             if (self.max_length is not None) and len(value) > self.max_length:
-                raise ValueError('Value length must be less than {}'.format(
-                    self.max_length))
+                raise ValueError(
+                    'Field `{}`: Value length must be less than {}'.format(
+                        self._column_name, self.max_length))
         return value
 
 
-class SizeLimitedNumberMixin(ProcessableMixin):
+class SizeLimitedNumberMixin(object):
     """ Mixin for custom string types which may be size limited. """
+    _column_name = None
+
     def __init__(self, *args, **kwargs):
         self.min_value = kwargs.pop('min_value', None)
         self.max_value = kwargs.pop('max_value', None)
         super(SizeLimitedNumberMixin, self).__init__(*args, **kwargs)
 
     def process_bind_param(self, value, dialect):
-        value = super(SizeLimitedNumberMixin, self).process_bind_param(
-            value, dialect)
         if value is None:
             return value
         if (self.min_value is not None) and value < self.min_value:
-            raise ValueError('Value must be bigger than {}'.format(
-                self.min_value))
+            raise ValueError(
+                'Field `{}`: Value must be bigger than {}'.format(
+                    self._column_name, self.min_value))
         if (self.max_value is not None) and value > self.max_value:
-            raise ValueError('Value must be less than {}'.format(
-                self.max_value))
+            raise ValueError(
+                'Field `{}`: Value must be less than {}'.format(
+                    self._column_name, self.max_value))
         return value
 
 
@@ -109,24 +99,25 @@ class LimitedNumeric(SizeLimitedNumberMixin, types.TypeDecorator):
 
 # Types that support running processors
 
-class ProcessableDateTime(ProcessableMixin, types.TypeDecorator):
+class ProcessableDateTime(types.TypeDecorator):
     impl = types.DateTime
 
 
-class ProcessableBoolean(ProcessableMixin, types.TypeDecorator):
+class ProcessableBoolean(types.TypeDecorator):
     impl = types.Boolean
 
 
-class ProcessableDate(ProcessableMixin, types.TypeDecorator):
+class ProcessableDate(types.TypeDecorator):
     impl = types.Date
 
 
-class ProcessableChoice(ProcessableMixin, types.TypeDecorator):
+class ProcessableChoice(types.TypeDecorator):
     """ Type that represents value from a particular set of choices.
 
     Value may be any number of choices from a provided set of
     valid choices.
     """
+    _column_name = None
     impl = types.String
 
     def __init__(self, *args, **kwargs):
@@ -136,40 +127,36 @@ class ProcessableChoice(ProcessableMixin, types.TypeDecorator):
         super(ProcessableChoice, self).__init__(*args, **kwargs)
 
     def process_bind_param(self, value, dialect):
-        value = super(ProcessableChoice, self).process_bind_param(
-            value, dialect)
         if (value is not None) and (value not in self.choices):
-            err = 'Got an invalid choice `{}`. Valid choices: ({})'.format(
-                value, ', '.join(self.choices))
-            raise ValueError(err)
+            err = 'Field `{}`: Got an invalid choice `{}`. Valid choices: ({})'
+            err_ctx = [self._column_name, value, ', '.join(self.choices)]
+            raise ValueError(err.format(*err_ctx))
         return value
 
 
-class ProcessableInterval(ProcessableMixin, types.TypeDecorator):
+class ProcessableInterval(types.TypeDecorator):
     impl = types.Interval
 
     def process_bind_param(self, value, dialect):
         """ Convert seconds(int) :value: to `datetime.timedelta` instance. """
-        value = super(ProcessableInterval, self).process_bind_param(
-            value, dialect)
         if isinstance(value, int):
             value = datetime.timedelta(seconds=value)
         return value
 
 
-class ProcessableLargeBinary(ProcessableMixin, types.TypeDecorator):
+class ProcessableLargeBinary(types.TypeDecorator):
     impl = types.LargeBinary
 
 
-class ProcessablePickleType(ProcessableMixin, types.TypeDecorator):
+class ProcessablePickleType(types.TypeDecorator):
     impl = types.PickleType
 
 
-class ProcessableTime(ProcessableMixin, types.TypeDecorator):
+class ProcessableTime(types.TypeDecorator):
     impl = types.Time
 
 
-class ProcessableDict(ProcessableMixin, types.TypeDecorator):
+class ProcessableDict(types.TypeDecorator):
     """ Represents a dictionary of values.
 
 
@@ -192,8 +179,6 @@ class ProcessableDict(ProcessableMixin, types.TypeDecorator):
             return dialect.type_descriptor(types.UnicodeText)
 
     def process_bind_param(self, value, dialect):
-        value = super(ProcessableDict, self).process_bind_param(
-            value, dialect)
         if dialect.name == 'postgresql':
             return value
         if value is not None:
@@ -208,7 +193,7 @@ class ProcessableDict(ProcessableMixin, types.TypeDecorator):
         return value
 
 
-class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
+class ProcessableChoiceArray(types.TypeDecorator):
     """ Represents a list of values.
 
     If 'postgresql' is used, postgress.ARRAY type is used for db column
@@ -217,6 +202,7 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
     Supports providing :choices: argument which limits the set of values
     that may be stored in this field.
     """
+    _column_name = None
     impl = ARRAY
 
     def __init__(self, *args, **kwargs):
@@ -250,14 +236,13 @@ class ProcessableChoiceArray(ProcessableMixin, types.TypeDecorator):
 
         invalid_choices = set(value) - set(self.choices)
         if invalid_choices:
-            raise ValueError(
-                'Got invalid choices: ({}). Valid choices: ({})'.format(
-                    ', '.join(invalid_choices), ', '.join(self.choices)))
+            err = 'Field `{}`: Got invalid choices: ({}). Valid choices: ({})'
+            err_ctx = [self._column_name, ', '.join(invalid_choices),
+                       ', '.join(self.choices)]
+            raise ValueError(err.format(*err_ctx))
         return value
 
     def process_bind_param(self, value, dialect):
-        value = super(ProcessableChoiceArray, self).process_bind_param(
-            value, dialect)
         value = self._validate_choices(value)
         if dialect.name == 'postgresql':
             return value
