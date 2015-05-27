@@ -358,14 +358,6 @@ class TestBaseMixin(object):
         assert newobj.name == 'bar'
         assert newobj.settings == {'sett1': 'val1'}
 
-    @patch.object(docs.BaseMixin, 'get')
-    @patch.object(docs, 'object_session')
-    def test_underscore_delete(self, obj_session, mock_get):
-        docs.BaseMixin._delete(foo='bar')
-        mock_get.assert_called_once_with(foo='bar')
-        obj_session.assert_called_once_with(mock_get())
-        obj_session().delete.assert_called_once_with(mock_get())
-
     @patch.object(docs, 'Session')
     def test_underscore_delete_many(self, mock_session):
         docs.BaseMixin._delete_many(['foo', 'bar'])
@@ -657,6 +649,13 @@ class TestBaseDocument(object):
         with pytest.raises(JHTTPConflict) as ex:
             simple_model(id=4).update({'name': 'q'})
         assert 'There was a conflict' in str(ex.value)
+
+    @patch.object(docs, 'object_session')
+    def test_delete(self, obj_session):
+        obj = docs.BaseDocument()
+        obj.delete()
+        obj_session.assert_called_once_with(obj)
+        obj_session().delete.assert_called_once_with(obj)
 
     def test_clean_new_object(self, memory_db):
         processor = lambda instance, new_value: 'foobar'

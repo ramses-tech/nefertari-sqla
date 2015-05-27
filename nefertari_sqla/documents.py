@@ -465,11 +465,6 @@ class BaseMixin(object):
         return self
 
     @classmethod
-    def _delete(cls, **params):
-        obj = cls.get(**params)
-        object_session(obj).delete(obj)
-
-    @classmethod
     def _delete_many(cls, items, synchronize_session=False):
         """ Delete :items: queryset or objects list.
 
@@ -725,6 +720,9 @@ class BaseDocument(BaseObject, BaseMixin):
                 detail='Resource `{}` already exists.'.format(
                     self.__class__.__name__),
                 extra={'data': e})
+
+    def delete(self):
+        object_session(self).delete(self)
 
     def clean(self, force_all=False):
         """ Apply field processors to all changed fields And perform custom
