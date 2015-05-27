@@ -12,42 +12,47 @@ from nefertari.utils import to_dicts
 log = logging.getLogger(__name__)
 
 
-def index_object(obj, with_refs=True):
+def index_object(obj, with_refs=True, **kwargs):
     from nefertari.elasticsearch import ES
     es = ES(obj.__class__.__name__)
-    es.index(obj.to_dict())
+    es.index(obj.to_dict(), **kwargs)
     if with_refs:
-        es.index_refs(obj)
+        es.index_refs(obj, **kwargs)
 
 
 def on_after_insert(mapper, connection, target):
     # Reload `target` to get access to back references and processed
     # fields values
+    refresh_index = getattr(target, '_refresh_index', False)
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
-    index_object(reloaded)
+    index_object(reloaded, refresh_index=refresh_index)
 
 
 def on_after_update(mapper, connection, target):
+    refresh_index = getattr(target, '_refresh_index', False)
     session = object_session(target)
 
     # Reload `target` to get access to processed fields values
     attributes = [c.name for c in class_mapper(target.__class__).columns]
     session.expire(target, attribute_names=attributes)
-    index_object(target)
+    index_object(target, refresh_index=refresh_index)
 
 
 def on_after_delete(mapper, connection, target):
     from nefertari.elasticsearch import ES
+    refresh_index = getattr(target, '_refresh_index', False)
     model_cls = target.__class__
     es = ES(model_cls.__name__)
     obj_id = getattr(target, model_cls.pk_field())
-    es.delete(obj_id)
-    es.index_refs(target)
+    es.delete(obj_id, refresh_index=refresh_index)
+    es.index_refs(target, refresh_index=refresh_index)
 
 
 def on_bulk_update(update_context):
+    refresh_index = getattr(
+        update_context.query, '_refresh_index', False)
     model_cls = update_context.mapper.entity
     if not getattr(model_cls, '_index_enabled', False):
         return
@@ -59,11 +64,11 @@ def on_bulk_update(update_context):
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
     documents = to_dicts(objects)
-    es.index(documents)
+    es.index(documents, refresh_index=refresh_index)
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj)
+        es.index_refs(obj, refresh_index=refresh_index)
 
 
 def on_bulk_delete(model_cls, objects, refresh_index=False):
@@ -75,11 +80,11 @@ def on_bulk_delete(model_cls, objects, refresh_index=False):
 
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
-    es.delete(ids)
+    es.delete(ids, refresh_index=refresh_index)
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj)
+        es.index_refs(obj, refresh_index=refresh_index)
 
 
 def setup_es_signals_for(source_cls):
