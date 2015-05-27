@@ -377,12 +377,13 @@ class TestBaseMixin(object):
         items.delete.assert_called_once_with(
             synchronize_session=False)
         mock_on_bulk.assert_called_once_with(
-            docs.BaseMixin, [1, 2, 3], refresh_index=False)
+            docs.BaseMixin, [1, 2, 3], refresh_index=None)
 
     def test_underscore_update_many(self):
         item = Mock()
         docs.BaseMixin._update_many([item], foo='bar')
-        item.update.assert_called_once_with({'foo': 'bar'})
+        item.update.assert_called_once_with(
+            {'foo': 'bar'}, refresh_index=None)
 
     def test_underscore_update_many_query(self):
         from sqlalchemy.orm.query import Query

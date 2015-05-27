@@ -466,7 +466,7 @@ class BaseMixin(object):
 
     @classmethod
     def _delete_many(cls, items, synchronize_session=False,
-                     refresh_index=False):
+                     refresh_index=None):
         """ Delete :items: queryset or objects list.
 
         When queryset passed, Query.delete() is used to delete it. Note that
@@ -498,7 +498,7 @@ class BaseMixin(object):
 
     @classmethod
     def _update_many(cls, items, synchronize_session='fetch',
-                     refresh_index=False, **params):
+                     refresh_index=None, **params):
         """ Update :items: queryset or objects list.
 
         When queryset passed, Query.update() is used to update it. Note that
@@ -516,8 +516,7 @@ class BaseMixin(object):
             except Exception as ex:
                 log.error(str(ex))
         for item in items:
-            item._refresh_index = refresh_index
-            item.update(params)
+            item.update(params, refresh_index=refresh_index)
 
     def __repr__(self):
         parts = []
@@ -571,7 +570,7 @@ class BaseMixin(object):
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         refresh_index=False):
+                         refresh_index=None):
         self._refresh_index = refresh_index
         mapper = class_mapper(self.__class__)
         columns = {c.name: c for c in mapper.columns}
@@ -687,7 +686,7 @@ class BaseDocument(BaseObject, BaseMixin):
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
-    def save(self, refresh_index=False):
+    def save(self, refresh_index=None):
         session = object_session(self)
         self._bump_version()
         self._refresh_index = refresh_index
@@ -707,7 +706,7 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def update(self, params, refresh_index=False):
+    def update(self, params, refresh_index=None):
         self._refresh_index = refresh_index
         try:
             self._update(params)
@@ -726,7 +725,7 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def delete(self, refresh_index=False):
+    def delete(self, refresh_index=None):
         self._refresh_index = refresh_index
         object_session(self).delete(self)
 

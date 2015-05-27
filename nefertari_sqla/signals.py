@@ -3,7 +3,6 @@ import logging
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import object_session, class_mapper
-from sqlalchemy.orm.query import Query
 from pyramid_sqlalchemy import Session
 
 from nefertari.utils import to_dicts
@@ -23,7 +22,7 @@ def index_object(obj, with_refs=True, **kwargs):
 def on_after_insert(mapper, connection, target):
     # Reload `target` to get access to back references and processed
     # fields values
-    refresh_index = getattr(target, '_refresh_index', False)
+    refresh_index = getattr(target, '_refresh_index', None)
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
@@ -31,7 +30,7 @@ def on_after_insert(mapper, connection, target):
 
 
 def on_after_update(mapper, connection, target):
-    refresh_index = getattr(target, '_refresh_index', False)
+    refresh_index = getattr(target, '_refresh_index', None)
     session = object_session(target)
 
     # Reload `target` to get access to processed fields values
@@ -42,7 +41,7 @@ def on_after_update(mapper, connection, target):
 
 def on_after_delete(mapper, connection, target):
     from nefertari.elasticsearch import ES
-    refresh_index = getattr(target, '_refresh_index', False)
+    refresh_index = getattr(target, '_refresh_index', None)
     model_cls = target.__class__
     es = ES(model_cls.__name__)
     obj_id = getattr(target, model_cls.pk_field())
@@ -52,7 +51,7 @@ def on_after_delete(mapper, connection, target):
 
 def on_bulk_update(update_context):
     refresh_index = getattr(
-        update_context.query, '_refresh_index', False)
+        update_context.query, '_refresh_index', None)
     model_cls = update_context.mapper.entity
     if not getattr(model_cls, '_index_enabled', False):
         return
@@ -71,7 +70,7 @@ def on_bulk_update(update_context):
         es.index_refs(obj, refresh_index=refresh_index)
 
 
-def on_bulk_delete(model_cls, objects, refresh_index=False):
+def on_bulk_delete(model_cls, objects, refresh_index=None):
     if not getattr(model_cls, '_index_enabled', False):
         return
 
