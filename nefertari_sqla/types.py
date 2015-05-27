@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
 
 class LengthLimitedStringMixin(object):
     """ Mixin for custom string types which may be length limited. """
+    _column_name = None
+
     def __init__(self, *args, **kwargs):
         self.min_length = kwargs.pop('min_length', None)
         self.max_length = kwargs.pop('max_length', None)
@@ -17,16 +19,20 @@ class LengthLimitedStringMixin(object):
     def process_bind_param(self, value, dialect):
         if value is not None:
             if (self.min_length is not None) and len(value) < self.min_length:
-                raise ValueError('Value length must be more than {}'.format(
-                    self.min_length))
+                raise ValueError(
+                    'Field `{}`: Value length must be more than {}'.format(
+                        self._column_name, self.min_length))
             if (self.max_length is not None) and len(value) > self.max_length:
-                raise ValueError('Value length must be less than {}'.format(
-                    self.max_length))
+                raise ValueError(
+                    'Field `{}`: Value length must be less than {}'.format(
+                        self._column_name, self.max_length))
         return value
 
 
 class SizeLimitedNumberMixin(object):
     """ Mixin for custom string types which may be size limited. """
+    _column_name = None
+
     def __init__(self, *args, **kwargs):
         self.min_value = kwargs.pop('min_value', None)
         self.max_value = kwargs.pop('max_value', None)
@@ -36,11 +42,13 @@ class SizeLimitedNumberMixin(object):
         if value is None:
             return value
         if (self.min_value is not None) and value < self.min_value:
-            raise ValueError('Value must be bigger than {}'.format(
-                self.min_value))
+            raise ValueError(
+                'Field `{}`: Value must be bigger than {}'.format(
+                    self._column_name, self.min_value))
         if (self.max_value is not None) and value > self.max_value:
-            raise ValueError('Value must be less than {}'.format(
-                self.max_value))
+            raise ValueError(
+                'Field `{}`: Value must be less than {}'.format(
+                    self._column_name, self.max_value))
         return value
 
 
@@ -109,6 +117,7 @@ class ProcessableChoice(types.TypeDecorator):
     Value may be any number of choices from a provided set of
     valid choices.
     """
+    _column_name = None
     impl = types.String
 
     def __init__(self, *args, **kwargs):
@@ -119,9 +128,9 @@ class ProcessableChoice(types.TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if (value is not None) and (value not in self.choices):
-            err = 'Got an invalid choice `{}`. Valid choices: ({})'.format(
-                value, ', '.join(self.choices))
-            raise ValueError(err)
+            err = 'Field `{}`: Got an invalid choice `{}`. Valid choices: ({})'
+            err_ctx = [self._column_name, value, ', '.join(self.choices)]
+            raise ValueError(err.format(*err_ctx))
         return value
 
 
@@ -193,6 +202,7 @@ class ProcessableChoiceArray(types.TypeDecorator):
     Supports providing :choices: argument which limits the set of values
     that may be stored in this field.
     """
+    _column_name = None
     impl = ARRAY
 
     def __init__(self, *args, **kwargs):
@@ -226,9 +236,10 @@ class ProcessableChoiceArray(types.TypeDecorator):
 
         invalid_choices = set(value) - set(self.choices)
         if invalid_choices:
-            raise ValueError(
-                'Got invalid choices: ({}). Valid choices: ({})'.format(
-                    ', '.join(invalid_choices), ', '.join(self.choices)))
+            err = 'Field `{}`: Got invalid choices: ({}). Valid choices: ({})'
+            err_ctx = [self._column_name, ', '.join(invalid_choices),
+                       ', '.join(self.choices)]
+            raise ValueError(err.format(*err_ctx))
         return value
 
     def process_bind_param(self, value, dialect):
