@@ -360,10 +360,11 @@ class TestBaseMixin(object):
 
     @patch.object(docs, 'Session')
     def test_underscore_delete_many(self, mock_session):
-        docs.BaseMixin._delete_many(['foo', 'bar'])
+        foo = Mock()
+        docs.BaseMixin._delete_many([foo])
         mock_session.assert_called_once_with()
-        mock_session().delete.assert_called_with('bar')
-        assert mock_session().delete.call_count == 2
+        mock_session().delete.assert_called_with(foo)
+        assert mock_session().delete.call_count == 1
         mock_session().flush.assert_called_once_with()
 
     @patch.object(docs, 'on_bulk_delete')
@@ -375,7 +376,8 @@ class TestBaseMixin(object):
         docs.BaseMixin._delete_many(items)
         items.delete.assert_called_once_with(
             synchronize_session=False)
-        mock_on_bulk.assert_called_once_with(docs.BaseMixin, [1, 2, 3])
+        mock_on_bulk.assert_called_once_with(
+            docs.BaseMixin, [1, 2, 3], refresh_index=False)
 
     def test_underscore_update_many(self):
         item = Mock()

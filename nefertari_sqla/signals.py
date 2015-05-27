@@ -66,7 +66,7 @@ def on_bulk_update(update_context):
         es.index_refs(obj)
 
 
-def on_bulk_delete(model_cls, objects):
+def on_bulk_delete(model_cls, objects, refresh_index=False):
     if not getattr(model_cls, '_index_enabled', False):
         return
 
