@@ -12,16 +12,16 @@ from .types import (
     LimitedFloat,
     LimitedNumeric,
     LimitedUnicodeText,
-    ProcessableDateTime,
-    ProcessableBoolean,
-    ProcessableDate,
-    ProcessableInterval,
-    ProcessableLargeBinary,
-    ProcessablePickleType,
-    ProcessableTime,
-    ProcessableChoice,
-    ProcessableDict,
-    ProcessableChoiceArray,
+    DateTime,
+    Boolean,
+    Date,
+    Interval,
+    LargeBinary,
+    PickleType,
+    Time,
+    Choice,
+    Dict,
+    ChoiceArray,
 )
 
 
@@ -142,7 +142,7 @@ class BigIntegerField(ProcessableMixin, BaseField):
 
 
 class BooleanField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableBoolean
+    _sqla_type = Boolean
     _type_unchanged_kwargs = ('create_constraint')
 
     def process_type_args(self, kwargs):
@@ -159,17 +159,17 @@ class BooleanField(ProcessableMixin, BaseField):
 
 
 class DateField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableDate
+    _sqla_type = Date
     _type_unchanged_kwargs = ()
 
 
 class DateTimeField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableDateTime
+    _sqla_type = DateTime
     _type_unchanged_kwargs = ('timezone',)
 
 
 class ChoiceField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableChoice
+    _sqla_type = Choice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'choices')
@@ -195,13 +195,13 @@ class IdField(IntegerField):
 
 
 class IntervalField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableInterval
+    _sqla_type = Interval
     _type_unchanged_kwargs = (
         'native', 'second_precision', 'day_precision')
 
 
 class BinaryField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessableLargeBinary
+    _sqla_type = LargeBinary
     _type_unchanged_kwargs = ('length',)
 
 # Since SQLAlchemy 1.0.0
@@ -217,7 +217,7 @@ class DecimalField(ProcessableMixin, BaseField):
 
 
 class PickleField(ProcessableMixin, BaseField):
-    _sqla_type = ProcessablePickleType
+    _sqla_type = PickleType
     _type_unchanged_kwargs = (
         'protocol', 'pickler', 'comparator')
 
@@ -251,7 +251,7 @@ class TextField(StringField):
 
 
 class TimeField(DateTimeField):
-    _sqla_type = ProcessableTime
+    _sqla_type = Time
 
 
 class UnicodeField(StringField):
@@ -263,7 +263,7 @@ class UnicodeTextField(StringField):
 
 
 class DictField(BaseField):
-    _sqla_type = ProcessableDict
+    _sqla_type = Dict
     _type_unchanged_kwargs = ()
 
     def process_type_args(self, kwargs):
@@ -274,7 +274,7 @@ class DictField(BaseField):
 
 
 class ListField(BaseField):
-    _sqla_type = ProcessableChoiceArray
+    _sqla_type = ChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')
 

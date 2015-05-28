@@ -67,11 +67,11 @@ TYPES_MAP = {
     types.LimitedText: {'type': 'string'},
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
-    types.ProcessableChoice: {'type': 'string'},
+    types.Choice: {'type': 'string'},
 
-    types.ProcessableBoolean: {'type': 'boolean'},
-    types.ProcessableLargeBinary: {'type': 'object'},
-    types.ProcessableDict: {'type': 'object'},
+    types.Boolean: {'type': 'boolean'},
+    types.LargeBinary: {'type': 'object'},
+    types.Dict: {'type': 'object'},
 
     types.LimitedNumeric: {'type': 'double'},
     types.LimitedFloat: {'type': 'double'},
@@ -79,11 +79,11 @@ TYPES_MAP = {
     types.LimitedInteger: {'type': 'long'},
     types.LimitedBigInteger: {'type': 'long'},
     types.LimitedSmallInteger: {'type': 'long'},
-    types.ProcessableInterval: {'type': 'long'},
+    types.Interval: {'type': 'long'},
 
-    types.ProcessableDateTime: {'type': 'date', 'format': 'dateOptionalTime'},
-    types.ProcessableDate: {'type': 'date', 'format': 'dateOptionalTime'},
-    types.ProcessableTime: {'type': 'date', 'format': 'HH:mm:ss'},
+    types.DateTime: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.Date: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.Time: {'type': 'date', 'format': 'HH:mm:ss'},
 }
 
 
@@ -124,7 +124,7 @@ class BaseMixin(object):
 
         for name, column in columns.items():
             column_type = column.type
-            if isinstance(column_type, types.ProcessableChoiceArray):
+            if isinstance(column_type, types.ChoiceArray):
                 column_type = column_type.impl.item_type
             column_type = type(column_type)
             if column_type not in TYPES_MAP:
