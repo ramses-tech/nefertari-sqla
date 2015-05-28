@@ -30,6 +30,12 @@ class ProcessableMixin(object):
     is being set on a field.
     """
     def __init__(self, *args, **kwargs):
+        """ Pop pre/post processors
+
+        :pre_processors: Processors that are run before session.flush()
+        :post_processors: Processors that are run after session.flush() but
+            before session.commit()
+        """
         self.pre_processors = kwargs.pop('pre_processors', ())
         self.post_processors = kwargs.pop('post_processors', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
