@@ -645,8 +645,8 @@ class TestBaseDocument(object):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(pre_processors=[processor])
+            email = fields.StringField(pre_processors=[processor])
         memory_db()
 
         obj = MyModel(name='myname')
@@ -660,8 +660,8 @@ class TestBaseDocument(object):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(pre_processors=[processor])
+            email = fields.StringField(pre_processors=[processor])
         memory_db()
 
         obj = MyModel(id=1, name='myname', email='FOO').save()

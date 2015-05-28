@@ -30,11 +30,17 @@ class ProcessableMixin(object):
     is being set on a field.
     """
     def __init__(self, *args, **kwargs):
-        self.processors = kwargs.pop('processors', ())
+        self.pre_processors = kwargs.pop('pre_processors', ())
+        self.post_processors = kwargs.pop('post_processors', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, instance, new_value):
-        for proc in self.processors:
+    def apply_processors(self, instance, new_value, pre=False, post=False):
+        processors = []
+        if pre:
+            processors += list(self.pre_processors)
+        if post:
+            processors += list(self.post_processors)
+        for proc in processors:
             new_value = proc(instance=instance, new_value=new_value)
         return new_value
 
