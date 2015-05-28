@@ -439,8 +439,7 @@ class BaseMixin(object):
         except NoResultFound:
             defaults.update(params)
             new_obj = cls(**defaults)
-            query_set.session.add(new_obj)
-            query_set.session.flush()
+            new_obj.save()
             return new_obj, True
         except MultipleResultsFound:
             raise JHTTPBadRequest('Bad or Insufficient Params')
@@ -568,9 +567,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                session = object_session(self)
-                session.add(self)
-                session.flush()
+                self.save()
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -594,9 +591,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                session = object_session(self)
-                session.add(self)
-                session.flush()
+                self.save()
 
         if is_dict:
             update_dict(params)
@@ -656,10 +651,11 @@ class BaseDocument(BaseObject, BaseMixin):
         self._bump_version()
         session = session or Session()
         try:
-            self.clean()
+            self.apply_pre_processors()
             session.add(self)
             session.flush()
             session.expire(self)
+            self.apply_post_processors()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
@@ -674,10 +670,11 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             self._update(params)
             self._bump_version()
-            self.clean()
+            self.apply_pre_processors()
             session = object_session(self)
             session.add(self)
             session.flush()
+            self.apply_post_processors()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
@@ -688,9 +685,30 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def clean(self, force_all=False):
-        """ Apply field processors to all changed fields And perform custom
-        field values cleaning before running DB validation.
+    def apply_processors(self, column_names=None, pre=False, post=False):
+        """ Apply processors to columns with :column_names: names.
+
+        Arguments:
+          :column_names: List of string names of changed columns.
+          :pre: Boolean indicating whether to apply pre-processors.
+          :post: Boolean indicating whether to apply post-processors.
+        """
+        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        if column_names is None:
+            column_names = columns.keys()
+
+        for name in column_names:
+            column = columns.get(name)
+            if column is not None and hasattr(column, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = column.apply_processors(
+                    instance=self, new_value=new_value,
+                    pre=pre, post=post)
+                setattr(self, name, processed_value)
+
+    def apply_pre_processors(self):
+        """ Determine changed columns and run `self.apply_processors` to
+        apply needed processors.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
@@ -699,18 +717,23 @@ class BaseDocument(BaseObject, BaseMixin):
         columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
 
-        if state.persistent and not force_all:
+        if state.persistent:
             changed_columns = state.committed_state.keys()
         else:  # New object
             changed_columns = columns.keys()
 
-        for name in changed_columns:
-            column = columns.get(name)
-            if column is not None and hasattr(column, 'apply_processors'):
-                new_value = getattr(self, name)
-                processed_value = column.apply_processors(
-                    instance=self, new_value=new_value)
-                setattr(self, name, processed_value)
+        self._columns_to_process = changed_columns
+        self.apply_processors(changed_columns, pre=True)
+
+    def apply_post_processors(self):
+        """ Run `self.apply_processors` with columns names determined by
+        `self.apply_pre_processors`.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        self.apply_processors(self._columns_to_process, post=True)
 
 
 class ESBaseDocument(BaseDocument):
