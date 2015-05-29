@@ -7,6 +7,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 
@@ -15,7 +16,7 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
-from .signals import ESMetaclass
+from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, DateTimeField, IntegerField
 from . import types
 
@@ -241,10 +242,9 @@ class BaseMixin(object):
         if first:
             params['_limit'] = 1
             params['__raise_on_empty'] = True
-        params['query_set'] = query_set.from_self()
-        query_set = cls.get_collection(**params)
+            params['query_set'] = query_set.from_self()
+            query_set = cls.get_collection(**params)
 
-        if first:
             first_obj = query_set.first()
             if not first_obj:
                 msg = "'{}({}={})' resource not found".format(
@@ -465,21 +465,58 @@ class BaseMixin(object):
         return self
 
     @classmethod
-    def _delete(cls, **params):
-        obj = cls.get(**params)
-        object_session(obj).delete(obj)
+    def _delete_many(cls, items, synchronize_session=False,
+                     refresh_index=None):
+        """ Delete :items: queryset or objects list.
 
-    @classmethod
-    def _delete_many(cls, items):
+        When queryset passed, Query.delete() is used to delete it. Note that
+        queryset may not have limit(), offset(), order_by(), group_by(), or
+        distinct() called on it.
+
+        If some of the methods listed above were called, or :items: is not
+        a Query instance, one-by-one items update is performed.
+
+        `on_bulk_delete` function is called to delete objects from index
+        and to reindex relationships. This is done explicitly because it is
+        impossible to get access to deleted objects in signal handler for
+        'after_bulk_delete' ORM event.
+        """
+        if isinstance(items, Query):
+            try:
+                delete_items = items.all()
+                items.delete(
+                    synchronize_session=synchronize_session)
+                on_bulk_delete(cls, delete_items, refresh_index=refresh_index)
+                return
+            except Exception as ex:
+                log.error(str(ex))
         session = Session()
         for item in items:
+            item._refresh_index = refresh_index
             session.delete(item)
         session.flush()
 
     @classmethod
-    def _update_many(cls, items, **params):
+    def _update_many(cls, items, synchronize_session='fetch',
+                     refresh_index=None, **params):
+        """ Update :items: queryset or objects list.
+
+        When queryset passed, Query.update() is used to update it. Note that
+        queryset may not have limit(), offset(), order_by(), group_by(), or
+        distinct() called on it.
+
+        If some of the methods listed above were called, or :items: is not
+        a Query instance, one-by-one items update is performed.
+        """
+        if isinstance(items, Query):
+            try:
+                items._refresh_index = refresh_index
+                return items.update(
+                    params, synchronize_session=synchronize_session)
+            except Exception as ex:
+                log.error(str(ex))
         for item in items:
-            item.update(params)
+            item.update(params, refresh_index=refresh_index)
 
     def __repr__(self):
         parts = []
@@ -532,7 +569,9 @@ class BaseMixin(object):
         return _dict
 
     def update_iterables(self, params, attr, unique=False,
-                         value_type=None, save=True):
+                         value_type=None, save=True,
+                         refresh_index=None):
+        self._refresh_index = refresh_index
         mapper = class_mapper(self.__class__)
         columns = {c.name: c for c in mapper.columns}
         is_dict = isinstance(columns.get(attr), DictField)
@@ -568,9 +607,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                session = object_session(self)
-                session.add(self)
-                session.flush()
+                self.save(refresh_index=refresh_index)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -594,9 +631,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                session = object_session(self)
-                session.add(self)
-                session.flush()
+                self.save(refresh_index=refresh_index)
 
         if is_dict:
             update_dict(params)
@@ -651,9 +686,10 @@ class BaseDocument(BaseObject, BaseMixin):
             self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
-    def save(self, *arg, **kw):
+    def save(self, refresh_index=None):
         session = object_session(self)
         self._bump_version()
+        self._refresh_index = refresh_index
         session = session or Session()
         try:
             self.clean()
@@ -670,7 +706,8 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def update(self, params):
+    def update(self, params, refresh_index=None):
+        self._refresh_index = refresh_index
         try:
             self._update(params)
             self._bump_version()
@@ -687,6 +724,10 @@ class BaseDocument(BaseObject, BaseMixin):
                 detail='Resource `{}` already exists.'.format(
                     self.__class__.__name__),
                 extra={'data': e})
+
+    def delete(self, refresh_index=None):
+        self._refresh_index = refresh_index
+        object_session(self).delete(self)
 
     def clean(self, force_all=False):
         """ Apply field processors to all changed fields And perform custom
