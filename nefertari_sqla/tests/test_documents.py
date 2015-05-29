@@ -722,7 +722,7 @@ class TestGetCollection(object):
         memory_db()
         simple_model(id=1, name='foo').save()
         result = simple_model.get_collection(_limit=1, _fields=['name'])
-        assert result.all() == [(u'foo',)]
+        assert result.all() == [('foo',)]
 
     def test_offset(self, simple_model, memory_db):
         memory_db()
