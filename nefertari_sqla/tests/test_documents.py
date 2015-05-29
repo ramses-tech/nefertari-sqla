@@ -358,26 +358,40 @@ class TestBaseMixin(object):
         assert newobj.name == 'bar'
         assert newobj.settings == {'sett1': 'val1'}
 
-    @patch.object(docs.BaseMixin, 'get')
-    @patch.object(docs, 'object_session')
-    def test_underscore_delete(self, obj_session, mock_get):
-        docs.BaseMixin._delete(foo='bar')
-        mock_get.assert_called_once_with(foo='bar')
-        obj_session.assert_called_once_with(mock_get())
-        obj_session().delete.assert_called_once_with(mock_get())
-
     @patch.object(docs, 'Session')
     def test_underscore_delete_many(self, mock_session):
-        docs.BaseMixin._delete_many(['foo', 'bar'])
+        foo = Mock()
+        docs.BaseMixin._delete_many([foo])
         mock_session.assert_called_once_with()
-        mock_session().delete.assert_called_with('bar')
-        assert mock_session().delete.call_count == 2
+        mock_session().delete.assert_called_with(foo)
+        assert mock_session().delete.call_count == 1
         mock_session().flush.assert_called_once_with()
+
+    @patch.object(docs, 'on_bulk_delete')
+    def test_underscore_delete_many_query(self, mock_on_bulk):
+        from sqlalchemy.orm.query import Query
+        items = Query('asd')
+        items.all = Mock(return_value=[1, 2, 3])
+        items.delete = Mock()
+        docs.BaseMixin._delete_many(items)
+        items.delete.assert_called_once_with(
+            synchronize_session=False)
+        mock_on_bulk.assert_called_once_with(
+            docs.BaseMixin, [1, 2, 3], refresh_index=None)
 
     def test_underscore_update_many(self):
         item = Mock()
         docs.BaseMixin._update_many([item], foo='bar')
-        item.update.assert_called_once_with({'foo': 'bar'})
+        item.update.assert_called_once_with(
+            {'foo': 'bar'}, refresh_index=None)
+
+    def test_underscore_update_many_query(self):
+        from sqlalchemy.orm.query import Query
+        items = Query('asd')
+        items.update = Mock()
+        docs.BaseMixin._update_many(items, foo='bar')
+        items.update.assert_called_once_with(
+            {'foo': 'bar'}, synchronize_session='fetch')
 
     def test_repr(self):
         obj = docs.BaseMixin()
@@ -638,6 +652,13 @@ class TestBaseDocument(object):
         with pytest.raises(JHTTPConflict) as ex:
             simple_model(id=4).update({'name': 'q'})
         assert 'There was a conflict' in str(ex.value)
+
+    @patch.object(docs, 'object_session')
+    def test_delete(self, obj_session):
+        obj = docs.BaseDocument()
+        obj.delete()
+        obj_session.assert_called_once_with(obj)
+        obj_session().delete.assert_called_once_with(obj)
 
     def test_clean_new_object(self, memory_db):
         processor = lambda instance, new_value: 'foobar'
