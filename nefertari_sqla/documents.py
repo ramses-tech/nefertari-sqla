@@ -331,8 +331,10 @@ class BaseMixin(object):
             query_set = Session().query(cls)
 
         # Remove any __ legacy instructions from this point on
-        params = dictset(filter(
-            lambda item: not item[0].startswith('__'), params.items()))
+        params = dictset({
+            key: val for key, val in params.items()
+            if not key.startswith('__')
+        })
 
         iterables_exprs, params = cls._pop_iterables(params)
 

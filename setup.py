@@ -9,7 +9,8 @@ install_requires = [
     'sqlalchemy_utils',
     'elasticsearch',
     'pyramid_tm',
-    'nefertari==0.3.0'
+    'nefertari==0.3.0',
+    'six',
 ]
 
 
