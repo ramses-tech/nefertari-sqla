@@ -282,9 +282,9 @@ class TestBaseMixin(object):
 
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
-        assert simple_model.fields_to_query() == [
-            '_count', '_start', 'name', '_sort', 'updated_at',
-            '_version', '_limit', '_fields', 'id', '_page']
+        assert sorted(simple_model.fields_to_query()) == [
+            '_count', '_fields', '_limit', '_page', '_sort',
+            '_start', '_version', 'id', 'name', 'updated_at']
 
     @patch.object(docs.BaseMixin, 'get_resource')
     def test_get(self, get_res):
@@ -513,19 +513,19 @@ class TestBaseMixin(object):
             {'setting1': '', 'setting2': '', '__boo': 'boo'},
             attr='settings', save=False)
         assert not obj_session.called
-        assert myobj.settings == ['setting1', 'setting2']
+        assert sorted(myobj.settings) == ['setting1', 'setting2']
 
         # New values to existing value
         myobj.update_iterables(
             {'-setting1': '', 'setting3': ''}, attr='settings',
             unique=True, save=False)
         assert not obj_session.called
-        assert myobj.settings == ['setting2', 'setting3']
+        assert sorted(myobj.settings) == ['setting2', 'setting3']
 
         # With save
         myobj.update_iterables(
             {'setting2': ''}, attr='settings', unique=False, save=True)
-        assert myobj.settings == ['setting2', 'setting3', 'setting2']
+        assert sorted(myobj.settings) == ['setting2', 'setting2', 'setting3']
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()

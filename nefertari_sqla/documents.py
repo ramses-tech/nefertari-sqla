@@ -2,6 +2,7 @@ import copy
 import logging
 from datetime import datetime
 
+import six
 from sqlalchemy.orm import (
     class_mapper, object_session, properties, attributes)
 from sqlalchemy.orm.collections import InstrumentedList
@@ -301,7 +302,7 @@ class BaseMixin(object):
         for key in iterables.keys():
             params.pop(key)
 
-        return iterables.values(), params
+        return list(iterables.values()), params
 
     @classmethod
     def get_collection(cls, **params):
@@ -340,7 +341,7 @@ class BaseMixin(object):
 
         if __strict:
             _check_fields = [
-                f.strip('-+') for f in params.keys() + _fields + _sort]
+                f.strip('-+') for f in list(params.keys()) + _fields + _sort]
             cls.check_fields_allowed(_check_fields)
         else:
             params = cls.filter_fields(params)
@@ -449,7 +450,7 @@ class BaseMixin(object):
 
     def _update(self, params, **kw):
         process_bools(params)
-        self.check_fields_allowed(params.keys())
+        self.check_fields_allowed(list(params.keys()))
         columns = {c.name: c for c in class_mapper(self.__class__).columns}
         iter_columns = set(
             k for k, v in columns.items()
@@ -597,7 +598,7 @@ class BaseMixin(object):
             if update_params is None:
                 update_params = {
                     '-' + key: val for key, val in final_value.items()}
-            positive, negative = split_keys(update_params.keys())
+            positive, negative = split_keys(list(update_params.keys()))
 
             # Pop negative keys
             for key in negative:
@@ -605,7 +606,7 @@ class BaseMixin(object):
 
             # Set positive keys
             for key in positive:
-                final_value[unicode(key)] = update_params[key]
+                final_value[str(key)] = update_params[key]
 
             setattr(self, attr, final_value)
             if save:
@@ -616,8 +617,11 @@ class BaseMixin(object):
             final_value = copy.deepcopy(final_value)
             if update_params is None:
                 update_params = ['-' + val for val in final_value]
-            keys = (update_params.keys() if isinstance(update_params, dict)
-                    else update_params)
+            if isinstance(update_params, dict):
+                keys = list(update_params.keys())
+            else:
+                keys = update_params
+
             positive, negative = split_keys(keys)
 
             if not (positive + negative):
@@ -743,9 +747,9 @@ class BaseDocument(BaseObject, BaseMixin):
         state = attributes.instance_state(self)
 
         if state.persistent and not force_all:
-            changed_columns = state.committed_state.keys()
+            changed_columns = list(state.committed_state.keys())
         else:  # New object
-            changed_columns = columns.keys()
+            changed_columns = list(columns.keys())
 
         for name in changed_columns:
             column = columns.get(name)
@@ -756,6 +760,7 @@ class BaseDocument(BaseObject, BaseMixin):
                 setattr(self, name, processed_value)
 
 
+@six.add_metaclass(ESMetaclass)
 class ESBaseDocument(BaseDocument):
     """ Base class for SQLA models that use Elasticsearch.
 
@@ -763,4 +768,3 @@ class ESBaseDocument(BaseDocument):
     should be abstract as well (__abstract__ = True).
     """
     __abstract__ = True
-    __metaclass__ = ESMetaclass

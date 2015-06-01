@@ -429,8 +429,8 @@ class ForeignKeyField(BaseSchemaItemField):
         return rules[action]
 
     def _generate_schema_item(self, cleaned_kw):
-        """ Override default implementation to generate 'ondelete' and 'onupdate'
-        arguments.
+        """ Override default implementation to generate 'ondelete' and
+        'onupdate' arguments.
         """
         pref = self._schema_kwarg_prefix
         cleaned_kw[pref + 'ondelete'] = self._get_referential_action(
