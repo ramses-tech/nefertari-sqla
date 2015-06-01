@@ -760,8 +760,7 @@ class BaseDocument(BaseObject, BaseMixin):
                 setattr(self, name, processed_value)
 
 
-@six.add_metaclass(ESMetaclass)
-class ESBaseDocument(BaseDocument):
+class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
     """ Base class for SQLA models that use Elasticsearch.
 
     Subclasses of this class that do not define a model schema
