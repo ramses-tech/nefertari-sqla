@@ -650,8 +650,11 @@ class BaseMixin(object):
             # If 'Many' side should be indexed, its value is already a list.
             if value is None or isinstance(value, list):
                 continue
-            session = object_session(value)
-            session.refresh(value)
+            try:
+                session = object_session(value)
+                session.refresh(value)
+            except InvalidRequestError:
+                pass
             yield (value.__class__, [value.to_dict()])
 
     def _is_modified(self):
