@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    'sqlalchemy==0.9.9',
+    'sqlalchemy',
     'zope.dottedname',
     'psycopg2',
     'pyramid_sqlalchemy',

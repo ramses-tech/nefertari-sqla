@@ -622,7 +622,7 @@ class TestBaseDocument(object):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
-        err.message = 'duplicate'
+        err.args = ('duplicate',)
         obj_session().flush.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:
@@ -646,7 +646,7 @@ class TestBaseDocument(object):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
-        err.message = 'duplicate'
+        err.args = ('duplicate',)
         mock_upd.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:

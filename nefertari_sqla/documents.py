@@ -704,7 +704,7 @@ class BaseDocument(BaseObject, BaseMixin):
             session.expire(self)
             return self
         except (IntegrityError,) as e:
-            if 'duplicate' not in e.message:
+            if 'duplicate' not in e.args[0]:
                 raise  # Other error, not duplicate
 
             raise JHTTPConflict(
@@ -723,7 +723,7 @@ class BaseDocument(BaseObject, BaseMixin):
             session.flush()
             return self
         except (IntegrityError,) as e:
-            if 'duplicate' not in e.message:
+            if 'duplicate' not in e.args[0]:
                 raise  # other error, not duplicate
 
             raise JHTTPConflict(
