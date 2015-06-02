@@ -338,8 +338,6 @@ class TestBaseMixin(object):
         one, created = simple_model.get_or_create(
             defaults={'id': 7}, _limit=2, name='q')
         assert created
-        assert queryset.session.add.call_count == 1
-        assert queryset.session.flush.call_count == 1
         assert one.id == 7
         assert one.name == 'q'
 
@@ -660,40 +658,91 @@ class TestBaseDocument(object):
         obj_session.assert_called_once_with(obj)
         obj_session().delete.assert_called_once_with(obj)
 
-    def test_clean_new_object(self, memory_db):
+    def test_apply_before_validation_new_object(self, memory_db):
         processor = lambda instance, new_value: 'foobar'
+        processor2 = lambda instance, new_value: new_value + '+'
 
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(
+                before_validation=[processor],
+                after_validation=[processor2])
+            email = fields.StringField(before_validation=[processor])
         memory_db()
 
         obj = MyModel(name='myname')
-        obj.clean()
+        obj.apply_before_validation()
         assert obj.name == 'foobar'
         assert obj.email == 'foobar'
 
-    def test_clean_existing_object(self, memory_db):
+    def test_apply_before_validation_existing_object(self, memory_db):
         processor = lambda instance, new_value: new_value + '-'
+        processor2 = lambda instance, new_value: new_value + '+'
 
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
-            name = fields.StringField(processors=[processor])
-            email = fields.StringField(processors=[processor])
+            name = fields.StringField(
+                before_validation=[processor],
+                after_validation=[processor2])
+            email = fields.StringField(before_validation=[processor])
         memory_db()
 
         obj = MyModel(id=1, name='myname', email='FOO').save()
-        assert obj.name == 'myname-'
+        assert obj.name == 'myname-+'
         assert obj.email == 'FOO-'
 
         obj = MyModel.get(id=1)
+        assert obj.name == 'myname-+'
         obj.name = 'supername'
-        obj.clean()
+        obj.apply_before_validation()
         assert obj.name == 'supername-'
         assert obj.email == 'FOO-'
+
+    def test_apply_after_validation(self, memory_db):
+        memory_db()
+        obj = docs.BaseDocument()
+        obj.apply_processors = Mock()
+        obj._columns_to_process = [1, 2, 3]
+        obj.apply_after_validation()
+        obj.apply_processors.assert_called_once_with(
+            [1, 2, 3], after=True)
+
+    def test_apply_before_validation(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            id = fields.IdField(primary_key=True)
+        memory_db()
+
+        obj = MyModel(id=1)
+        obj.apply_processors = Mock()
+        obj.apply_before_validation()
+        obj.apply_processors.assert_called_once_with(
+            ['id', 'updated_at', '_version'], before=True)
+
+    def test_apply_processors(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            name = fields.StringField(
+                primary_key=True,
+                before_validation=[lambda instance, new_value: new_value + '-'],
+                after_validation=[
+                    lambda instance, new_value: new_value + '+'])
+        memory_db()
+        obj = MyModel(name='foo')
+
+        obj.apply_processors(before=True)
+        assert obj.name == 'foo-'
+
+        obj.apply_processors(after=True)
+        assert obj.name == 'foo-+'
+
+        obj.apply_processors()
+        assert obj.name == 'foo-+'
+
+        obj.apply_processors(column_names=['name'], before=True, after=True)
+        assert obj.name == 'foo-+-+'
 
 
 class TestGetCollection(object):
