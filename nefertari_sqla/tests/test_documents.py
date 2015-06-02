@@ -79,10 +79,20 @@ class TestBaseMixin(object):
             groups = fields.ListField(
                 item_type=fields.StringField,
                 choices=['admin', 'user'])
+
+        class MyModel2(docs.BaseDocument):
+            _nested_relationships = ['myself']
+            __tablename__ = 'mymodel2'
+            name = fields.StringField(primary_key=True)
+            myself = fields.Relationship(
+                document='MyModel', backref_name='parent',
+                uselist=False, backref_uselist=False)
+            child_id = fields.ForeignKeyField(
+                ref_document='MyModel', ref_column='mymodel.name',
+                ref_column_type=fields.StringField)
         memory_db()
 
-        mapping = MyModel.get_es_mapping()
-        assert mapping == {
+        assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
                     '_type': {'type': 'string'},
@@ -91,6 +101,21 @@ class TestBaseMixin(object):
                     'id': {'type': 'string'},
                     'my_id': {'type': 'long'},
                     'name': {'type': 'string'},
+                    'parent': {'type': 'string'},
+                    'updated_at': {'format': 'dateOptionalTime',
+                                   'type': 'date'}
+                }
+            }
+        }
+        assert MyModel2.get_es_mapping() == {
+            'mymodel2': {
+                'properties': {
+                    '_type': {'type': 'string'},
+                    '_version': {'type': 'long'},
+                    'child_id': {'type': 'string'},
+                    'id': {'type': 'string'},
+                    'name': {'type': 'string'},
+                    'myself': {'type': 'object'},
                     'updated_at': {'format': 'dateOptionalTime',
                                    'type': 'date'}
                 }

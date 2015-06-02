@@ -120,6 +120,7 @@ class BaseMixin(object):
         }
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
+        relationships = {r.key: r for r in mapper.relationships}
         # Replace field 'id' with primary key field
         columns['id'] = columns.get(cls.pk_field())
 
@@ -131,6 +132,14 @@ class BaseMixin(object):
             if column_type not in TYPES_MAP:
                 continue
             properties[name] = TYPES_MAP[column_type]
+
+        for name, column in relationships.items():
+            if name in cls._nested_relationships:
+                column_type = {'type': 'object'}
+            else:
+                rel_pk_field = column.mapper.class_.pk_field_type()
+                column_type = TYPES_MAP[rel_pk_field]
+            properties[name] = column_type
 
         properties['_type'] = {'type': 'string'}
         return mapping
