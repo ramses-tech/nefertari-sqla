@@ -30,22 +30,23 @@ class ProcessableMixin(object):
     is being set on a field.
     """
     def __init__(self, *args, **kwargs):
-        """ Pop pre/post processors
+        """ Pop before/after validation processors
 
-        :pre_processors: Processors that are run before session.flush()
-        :post_processors: Processors that are run after session.flush() but
-            before session.commit()
+        :before_validation: Processors that are run before session.flush()
+        :after_validation: Processors that are run after session.flush()
+            but before session.commit()
         """
-        self.pre_processors = kwargs.pop('pre_processors', ())
-        self.post_processors = kwargs.pop('post_processors', ())
+        self.before_validation = kwargs.pop('before_validation', ())
+        self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, instance, new_value, pre=False, post=False):
+    def apply_processors(self, instance, new_value,
+                         before=False, after=False):
         processors = []
-        if pre:
-            processors += list(self.pre_processors)
-        if post:
-            processors += list(self.post_processors)
+        if before:
+            processors += list(self.before_validation)
+        if after:
+            processors += list(self.after_validation)
         for proc in processors:
             new_value = proc(instance=instance, new_value=new_value)
         return new_value

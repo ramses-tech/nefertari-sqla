@@ -651,11 +651,11 @@ class BaseDocument(BaseObject, BaseMixin):
         self._bump_version()
         session = session or Session()
         try:
-            self.apply_pre_processors()
+            self.apply_before_validation()
             session.add(self)
             session.flush()
             session.expire(self)
-            self.apply_post_processors()
+            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
@@ -670,11 +670,11 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             self._update(params)
             self._bump_version()
-            self.apply_pre_processors()
+            self.apply_before_validation()
             session = object_session(self)
             session.add(self)
             session.flush()
-            self.apply_post_processors()
+            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.message:
@@ -685,13 +685,15 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def apply_processors(self, column_names=None, pre=False, post=False):
+    def apply_processors(self, column_names=None, before=False, after=False):
         """ Apply processors to columns with :column_names: names.
 
         Arguments:
           :column_names: List of string names of changed columns.
-          :pre: Boolean indicating whether to apply pre-processors.
-          :post: Boolean indicating whether to apply post-processors.
+          :before: Boolean indicating whether to apply before_validation
+            processors.
+          :after: Boolean indicating whether to apply after_validation
+            processors.
         """
         columns = {c.key: c for c in class_mapper(self.__class__).columns}
         if column_names is None:
@@ -703,10 +705,10 @@ class BaseDocument(BaseObject, BaseMixin):
                 new_value = getattr(self, name)
                 processed_value = column.apply_processors(
                     instance=self, new_value=new_value,
-                    pre=pre, post=post)
+                    before=before, after=after)
                 setattr(self, name, processed_value)
 
-    def apply_pre_processors(self):
+    def apply_before_validation(self):
         """ Determine changed columns and run `self.apply_processors` to
         apply needed processors.
 
@@ -723,17 +725,17 @@ class BaseDocument(BaseObject, BaseMixin):
             changed_columns = columns.keys()
 
         self._columns_to_process = changed_columns
-        self.apply_processors(changed_columns, pre=True)
+        self.apply_processors(changed_columns, before=True)
 
-    def apply_post_processors(self):
+    def apply_after_validation(self):
         """ Run `self.apply_processors` with columns names determined by
-        `self.apply_pre_processors`.
+        `self.apply_before_validation`.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        self.apply_processors(self._columns_to_process, post=True)
+        self.apply_processors(self._columns_to_process, after=True)
 
 
 class ESBaseDocument(BaseDocument):
