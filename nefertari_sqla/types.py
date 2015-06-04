@@ -97,21 +97,19 @@ class LimitedNumeric(SizeLimitedNumberMixin, types.TypeDecorator):
     impl = types.Numeric
 
 
-# Types that support running processors
-
-class ProcessableDateTime(types.TypeDecorator):
+class DateTime(types.TypeDecorator):
     impl = types.DateTime
 
 
-class ProcessableBoolean(types.TypeDecorator):
+class Boolean(types.TypeDecorator):
     impl = types.Boolean
 
 
-class ProcessableDate(types.TypeDecorator):
+class Date(types.TypeDecorator):
     impl = types.Date
 
 
-class ProcessableChoice(types.TypeDecorator):
+class Choice(types.TypeDecorator):
     """ Type that represents value from a particular set of choices.
 
     Value may be any number of choices from a provided set of
@@ -124,7 +122,7 @@ class ProcessableChoice(types.TypeDecorator):
         self.choices = kwargs.pop('choices', ())
         if not isinstance(self.choices, (list, tuple, set)):
             self.choices = [self.choices]
-        super(ProcessableChoice, self).__init__(*args, **kwargs)
+        super(Choice, self).__init__(*args, **kwargs)
 
     def process_bind_param(self, value, dialect):
         if (value is not None) and (value not in self.choices):
@@ -134,7 +132,7 @@ class ProcessableChoice(types.TypeDecorator):
         return value
 
 
-class ProcessableInterval(types.TypeDecorator):
+class Interval(types.TypeDecorator):
     impl = types.Interval
 
     def process_bind_param(self, value, dialect):
@@ -144,19 +142,19 @@ class ProcessableInterval(types.TypeDecorator):
         return value
 
 
-class ProcessableLargeBinary(types.TypeDecorator):
+class LargeBinary(types.TypeDecorator):
     impl = types.LargeBinary
 
 
-class ProcessablePickleType(types.TypeDecorator):
+class PickleType(types.TypeDecorator):
     impl = types.PickleType
 
 
-class ProcessableTime(types.TypeDecorator):
+class Time(types.TypeDecorator):
     impl = types.Time
 
 
-class ProcessableDict(types.TypeDecorator):
+class Dict(types.TypeDecorator):
     """ Represents a dictionary of values.
 
 
@@ -193,7 +191,7 @@ class ProcessableDict(types.TypeDecorator):
         return value
 
 
-class ProcessableChoiceArray(types.TypeDecorator):
+class ChoiceArray(types.TypeDecorator):
     """ Represents a list of values.
 
     If 'postgresql' is used, postgress.ARRAY type is used for db column
@@ -211,7 +209,7 @@ class ProcessableChoiceArray(types.TypeDecorator):
                 self.choices, (list, tuple, set)):
             self.choices = [self.choices]
         self.kwargs = kwargs
-        super(ProcessableChoiceArray, self).__init__(*args, **kwargs)
+        super(ChoiceArray, self).__init__(*args, **kwargs)
 
     def load_dialect_impl(self, dialect):
         """ Based on :dialect.name: determine type to be used.
