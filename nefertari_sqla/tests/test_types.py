@@ -114,10 +114,10 @@ class TestSizeLimitedNumberMixin(object):
             raise Exception('Unexpected exception')
 
 
-class TestProcessableChoice(object):
+class TestChoice(object):
 
     def test_no_choices(self):
-        field = types.ProcessableChoice()
+        field = types.Choice()
         field._column_name = 'foo'
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('foo', None)
@@ -125,14 +125,14 @@ class TestProcessableChoice(object):
             'Field `foo`: Got an invalid choice `foo`. Valid choices: ()'
 
     def test_none_value(self):
-        field = types.ProcessableChoice()
+        field = types.Choice()
         try:
             field.process_bind_param(None, None)
         except ValueError:
             raise Exception('Unexpected error')
 
     def test_value_not_in_choices(self):
-        field = types.ProcessableChoice(choices=['foo'])
+        field = types.Choice(choices=['foo'])
         field._column_name = 'foo'
         with pytest.raises(ValueError) as ex:
             field.process_bind_param('bar', None)
@@ -140,38 +140,38 @@ class TestProcessableChoice(object):
             'Field `foo`: Got an invalid choice `bar`. Valid choices: (foo)'
 
     def test_value_in_choices(self):
-        field = types.ProcessableChoice(choices=['foo'])
+        field = types.Choice(choices=['foo'])
         try:
             field.process_bind_param('foo', None)
         except ValueError:
             raise Exception('Unexpected error')
 
     def test_choices_not_sequence(self):
-        field = types.ProcessableChoice(choices='foo')
+        field = types.Choice(choices='foo')
         try:
             field.process_bind_param('foo', None)
         except ValueError:
             raise Exception('Unexpected error')
 
 
-class TestProcessableInterval(object):
+class TestInterval(object):
 
     def test_passing_seconds(self):
-        field = types.ProcessableInterval()
+        field = types.Interval()
         value = field.process_bind_param(36000, None)
         assert isinstance(value, datetime.timedelta)
         assert value.seconds == 36000
 
     def test_passing_timedelta(self):
-        field = types.ProcessableInterval()
+        field = types.Interval()
         value = field.process_bind_param(datetime.timedelta(seconds=60), None)
         assert isinstance(value, datetime.timedelta)
 
 
-class TestProcessableDict(object):
+class TestDict(object):
 
     def test_load_dialect_impl_postgresql(self):
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'postgresql'
         field.load_dialect_impl(dialect=dialect)
@@ -180,7 +180,7 @@ class TestProcessableDict(object):
 
     def test_load_dialect_impl_not_postgresql(self):
         from sqlalchemy.types import UnicodeText
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'some_other'
         field.load_dialect_impl(dialect=dialect)
@@ -188,36 +188,36 @@ class TestProcessableDict(object):
         dialect.type_descriptor.assert_called_once_with(UnicodeText)
 
     def test_process_bind_param_postgres(self):
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'postgresql'
         assert {'q': 'f'} == field.process_bind_param({'q': 'f'}, dialect)
 
     def test_process_bind_param_not_postgres(self):
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'some_other'
         assert '{"q": "f"}' == field.process_bind_param({'q': 'f'}, dialect)
 
     def test_process_result_value_postgres(self):
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'postgresql'
         assert {'q': 'f'} == field.process_result_value({'q': 'f'}, dialect)
 
     def test_process_result_value_not_postgres(self):
-        field = types.ProcessableDict()
+        field = types.Dict()
         dialect = Mock()
         dialect.name = 'some_other'
         assert {'q': 'f'} == field.process_result_value('{"q": "f"}', dialect)
 
 
-class TestProcessableChoiceArray(object):
+class TestChoiceArray(object):
 
     @patch.object(types, 'ARRAY')
     @patch.object(types.types, 'UnicodeText')
     def test_load_dialect_impl_postgresql(self, mock_unic, mock_array):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'postgresql'
         field.load_dialect_impl(dialect=dialect)
@@ -228,7 +228,7 @@ class TestProcessableChoiceArray(object):
     @patch.object(types, 'ARRAY')
     @patch.object(types.types, 'UnicodeText')
     def test_load_dialect_impl_not_postgresql(self, mock_unic, mock_array):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'some_other'
         field.load_dialect_impl(dialect=dialect)
@@ -237,12 +237,12 @@ class TestProcessableChoiceArray(object):
         assert not mock_array.called
 
     def test_choices_not_sequence(self):
-        field = types.ProcessableChoiceArray(
+        field = types.ChoiceArray(
             item_type=fields.StringField, choices='foo')
         assert field.choices == ['foo']
 
     def test_validate_choices_no_choices(self):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         assert field.choices is None
         try:
             field._validate_choices(['foo'])
@@ -250,7 +250,7 @@ class TestProcessableChoiceArray(object):
             raise Exception('Unexpected error')
 
     def test_validate_choices_no_value(self):
-        field = types.ProcessableChoiceArray(
+        field = types.ChoiceArray(
             item_type=fields.StringField, choices=['foo'])
         try:
             field._validate_choices(None)
@@ -258,7 +258,7 @@ class TestProcessableChoiceArray(object):
             raise Exception('Unexpected error')
 
     def test_validate_choices_valid(self):
-        field = types.ProcessableChoiceArray(
+        field = types.ChoiceArray(
             item_type=fields.StringField,
             choices=['foo', 'bar'])
         try:
@@ -267,7 +267,7 @@ class TestProcessableChoiceArray(object):
             raise Exception('Unexpected error')
 
     def test_validate_choices_invalid(self):
-        field = types.ProcessableChoiceArray(
+        field = types.ChoiceArray(
             item_type=fields.StringField,
             choices=['foo', 'bar'])
         field._column_name = 'mycol'
@@ -278,25 +278,25 @@ class TestProcessableChoiceArray(object):
             'Valid choices: (foo, bar)')
 
     def test_process_bind_param_postgres(self):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'postgresql'
         assert ['q'] == field.process_bind_param(['q'], dialect)
 
     def test_process_bind_param_not_postgres(self):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'some_other'
         assert '["q"]' == field.process_bind_param(['q'], dialect)
 
     def test_process_result_value_postgres(self):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'postgresql'
         assert ['q'] == field.process_result_value(['q'], dialect)
 
     def test_process_result_value_not_postgres(self):
-        field = types.ProcessableChoiceArray(item_type=fields.StringField)
+        field = types.ChoiceArray(item_type=fields.StringField)
         dialect = Mock()
         dialect.name = 'some_other'
         assert ['q'] == field.process_result_value('["q"]', dialect)

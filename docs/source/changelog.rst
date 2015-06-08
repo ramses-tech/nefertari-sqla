@@ -1,6 +1,14 @@
 Changelog
 =========
 
+* :release:`0.2.4 <2015-06-05>`
+* :bug:`-` Forward compatibility with nefertari releases
+
+* :release:`0.2.3 <2015-06-03>`
+* :bug:`-` Fixed password minimum length support by adding before and after validation processors
+* :bug:`-` Fixed bug with Elasticsearch indexing of nested relationships
+* :bug:`-` Fixed race condition in Elasticsearch indexing
+
 * :release:`0.2.2 <2015-05-27>`
 * :bug:`-` Fixed login issue
 * :bug:`-` Fixed posting to singular resources e.g. /api/users/<username>/profile

@@ -69,11 +69,11 @@ TYPES_MAP = {
     types.LimitedText: {'type': 'string'},
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
-    types.ProcessableChoice: {'type': 'string'},
+    types.Choice: {'type': 'string'},
 
-    types.ProcessableBoolean: {'type': 'boolean'},
-    types.ProcessableLargeBinary: {'type': 'object'},
-    types.ProcessableDict: {'type': 'object'},
+    types.Boolean: {'type': 'boolean'},
+    types.LargeBinary: {'type': 'object'},
+    types.Dict: {'type': 'object'},
 
     types.LimitedNumeric: {'type': 'double'},
     types.LimitedFloat: {'type': 'double'},
@@ -81,11 +81,11 @@ TYPES_MAP = {
     types.LimitedInteger: {'type': 'long'},
     types.LimitedBigInteger: {'type': 'long'},
     types.LimitedSmallInteger: {'type': 'long'},
-    types.ProcessableInterval: {'type': 'long'},
+    types.Interval: {'type': 'long'},
 
-    types.ProcessableDateTime: {'type': 'date', 'format': 'dateOptionalTime'},
-    types.ProcessableDate: {'type': 'date', 'format': 'dateOptionalTime'},
-    types.ProcessableTime: {'type': 'date', 'format': 'HH:mm:ss'},
+    types.DateTime: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.Date: {'type': 'date', 'format': 'dateOptionalTime'},
+    types.Time: {'type': 'date', 'format': 'HH:mm:ss'},
 }
 
 
@@ -121,17 +121,26 @@ class BaseMixin(object):
         }
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
+        relationships = {r.key: r for r in mapper.relationships}
         # Replace field 'id' with primary key field
         columns['id'] = columns.get(cls.pk_field())
 
         for name, column in columns.items():
             column_type = column.type
-            if isinstance(column_type, types.ProcessableChoiceArray):
+            if isinstance(column_type, types.ChoiceArray):
                 column_type = column_type.impl.item_type
             column_type = type(column_type)
             if column_type not in TYPES_MAP:
                 continue
             properties[name] = TYPES_MAP[column_type]
+
+        for name, column in relationships.items():
+            if name in cls._nested_relationships:
+                column_type = {'type': 'object'}
+            else:
+                rel_pk_field = column.mapper.class_.pk_field_type()
+                column_type = TYPES_MAP[rel_pk_field]
+            properties[name] = column_type
 
         properties['_type'] = {'type': 'string'}
         return mapping
@@ -442,8 +451,7 @@ class BaseMixin(object):
         except NoResultFound:
             defaults.update(params)
             new_obj = cls(**defaults)
-            query_set.session.add(new_obj)
-            query_set.session.flush()
+            new_obj.save()
             return new_obj, True
         except MultipleResultsFound:
             raise JHTTPBadRequest('Bad or Insufficient Params')
@@ -656,8 +664,11 @@ class BaseMixin(object):
             # If 'Many' side should be indexed, its value is already a list.
             if value is None or isinstance(value, list):
                 continue
-            session = object_session(value)
-            session.refresh(value)
+            try:
+                session = object_session(value)
+                session.refresh(value)
+            except InvalidRequestError:
+                pass
             yield (value.__class__, [value.to_dict()])
 
     def _is_modified(self):
@@ -698,10 +709,11 @@ class BaseDocument(BaseObject, BaseMixin):
         self._refresh_index = refresh_index
         session = session or Session()
         try:
-            self.clean()
+            self.apply_before_validation()
             session.add(self)
             session.flush()
             session.expire(self)
+            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.args[0]:
@@ -717,10 +729,11 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             self._update(params)
             self._bump_version()
-            self.clean()
+            self.apply_before_validation()
             session = object_session(self)
             session.add(self)
             session.flush()
+            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.args[0]:
@@ -735,9 +748,32 @@ class BaseDocument(BaseObject, BaseMixin):
         self._refresh_index = refresh_index
         object_session(self).delete(self)
 
-    def clean(self, force_all=False):
-        """ Apply field processors to all changed fields And perform custom
-        field values cleaning before running DB validation.
+    def apply_processors(self, column_names=None, before=False, after=False):
+        """ Apply processors to columns with :column_names: names.
+
+        Arguments:
+          :column_names: List of string names of changed columns.
+          :before: Boolean indicating whether to apply before_validation
+            processors.
+          :after: Boolean indicating whether to apply after_validation
+            processors.
+        """
+        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        if column_names is None:
+            column_names = columns.keys()
+
+        for name in column_names:
+            column = columns.get(name)
+            if column is not None and hasattr(column, 'apply_processors'):
+                new_value = getattr(self, name)
+                processed_value = column.apply_processors(
+                    instance=self, new_value=new_value,
+                    before=before, after=after)
+                setattr(self, name, processed_value)
+
+    def apply_before_validation(self):
+        """ Determine changed columns and run `self.apply_processors` to
+        apply needed processors.
 
         Note that at this stage, field values are in the exact same state
         you posted/set them. E.g. if you set time_field='11/22/2000',
@@ -746,18 +782,24 @@ class BaseDocument(BaseObject, BaseMixin):
         columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
 
-        if state.persistent and not force_all:
+        if state.persistent:
             changed_columns = list(state.committed_state.keys())
         else:  # New object
             changed_columns = list(columns.keys())
 
-        for name in changed_columns:
-            column = columns.get(name)
-            if column is not None and hasattr(column, 'apply_processors'):
-                new_value = getattr(self, name)
-                processed_value = column.apply_processors(
-                    instance=self, new_value=new_value)
-                setattr(self, name, processed_value)
+        changed_columns = sorted(changed_columns)
+        self._columns_to_process = changed_columns
+        self.apply_processors(changed_columns, before=True)
+
+    def apply_after_validation(self):
+        """ Run `self.apply_processors` with columns names determined by
+        `self.apply_before_validation`.
+
+        Note that at this stage, field values are in the exact same state
+        you posted/set them. E.g. if you set time_field='11/22/2000',
+        self.time_field will be equal to '11/22/2000' here.
+        """
+        self.apply_processors(self._columns_to_process, after=True)
 
 
 class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
