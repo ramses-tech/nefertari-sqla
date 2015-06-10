@@ -426,7 +426,11 @@ class BaseMixin(object):
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
         query_set = cls.get_collection(**params)
-        return query_set.first()
+        obj = query_set.first()
+        session = object_session(obj) or Session()
+        session.add(obj)
+        session.refresh(obj)
+        return obj
 
     @classmethod
     def get(cls, **kw):
