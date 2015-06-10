@@ -290,17 +290,14 @@ class TestBaseMixin(object):
         assert docs.BaseMixin.has_field('foo')
         assert not docs.BaseMixin.has_field('bazz')
 
-    @patch.object(docs, 'Session')
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_get_resource(self, mock_get_coll, mock_sess):
+    def test_get_resource(self, mock_get_coll):
         queryset = Mock()
         mock_get_coll.return_value = queryset
         resource = docs.BaseMixin.get_resource(foo='bar')
         mock_get_coll.assert_called_once_with(
             __raise_on_empty=True, _limit=1, foo='bar')
         mock_get_coll().first.assert_called_once_with()
-        mock_sess().add.assert_called_once_with(resource)
-        mock_sess().refresh.assert_called_once_with(resource)
         assert resource == mock_get_coll().first()
 
     def test_native_fields(self, simple_model, memory_db):
