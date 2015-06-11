@@ -600,7 +600,9 @@ class BaseMixin(object):
         def update_dict(update_params):
             final_value = getattr(self, attr, {}) or {}
             final_value = final_value.copy()
-            if update_params is None:
+            if update_params is None or update_params == '':
+                if not final_value:
+                    return
                 update_params = {
                     '-' + key: val for key, val in final_value.items()}
             positive, negative = split_keys(update_params.keys())
@@ -620,7 +622,9 @@ class BaseMixin(object):
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
             final_value = copy.deepcopy(final_value)
-            if update_params is None:
+            if update_params is None or update_params == '':
+                if not final_value:
+                    return
                 update_params = ['-' + val for val in final_value]
             keys = (update_params.keys() if isinstance(update_params, dict)
                     else update_params)

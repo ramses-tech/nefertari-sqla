@@ -522,6 +522,12 @@ class TestBaseMixin(object):
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
 
+        # Nulify
+        myobj.update_iterables("", attr='settings', unique=False)
+        assert myobj.settings == {}
+        myobj.update_iterables(None, attr='settings', unique=False)
+        assert myobj.settings == {}
+
     @patch.object(docs, 'object_session')
     def test_update_iterables_list(self, obj_session, memory_db):
         class MyModel(docs.BaseDocument):
@@ -552,6 +558,12 @@ class TestBaseMixin(object):
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
+
+        # Nulify
+        myobj.update_iterables(None, attr='settings', unique=False)
+        assert myobj.settings == []
+        myobj.update_iterables("", attr='settings', unique=False)
+        assert myobj.settings == []
 
     @patch.object(docs, 'object_session')
     def test_get_reference_documents(self, mock_sess, memory_db):
