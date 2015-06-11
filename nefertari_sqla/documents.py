@@ -456,20 +456,13 @@ class BaseMixin(object):
     def _update(self, params, **kw):
         process_bools(params)
         self.check_fields_allowed(params.keys())
-        columns = {c.name: c for c in class_mapper(self.__class__).columns}
-        iter_columns = set(
-            k for k, v in columns.items()
-            if isinstance(v, (DictField, ListField)))
         pk_field = self.pk_field()
 
         for key, new_value in params.items():
             # Can't change PK field
             if key == pk_field:
                 continue
-            if key in iter_columns:
-                self.update_iterables(new_value, key, unique=True, save=False)
-            else:
-                setattr(self, key, new_value)
+            setattr(self, key, new_value)
         return self
 
     @classmethod
