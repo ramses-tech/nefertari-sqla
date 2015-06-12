@@ -9,6 +9,7 @@ install_requires = [
     'sqlalchemy_utils',
     'elasticsearch',
     'pyramid_tm',
+    'six',
     'nefertari>=0.3.3'
 ]
 
@@ -19,6 +20,10 @@ setup(
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.4",
         "Framework :: Pyramid",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
