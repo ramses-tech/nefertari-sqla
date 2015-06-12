@@ -1,6 +1,9 @@
 Changelog
 =========
 
+* :release:`0.3.0 <2015-06-12>`
+* :support:`-` Added python3 support
+
 * :release:`0.2.4 <2015-06-05>`
 * :bug:`-` Forward compatibility with nefertari releases
 
