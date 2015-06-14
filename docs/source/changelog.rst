@@ -1,7 +1,7 @@
 Changelog
 =========
 
-* :release:`0.3.0 <2015-06-12>`
+* :release:`0.3.0 <2015-06-14>`
 * :support:`-` Added python3 support
 
 * :release:`0.2.4 <2015-06-05>`
