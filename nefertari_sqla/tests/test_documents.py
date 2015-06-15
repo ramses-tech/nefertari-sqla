@@ -384,7 +384,7 @@ class TestBaseMixin(object):
     @patch.object(docs, 'Session')
     def test_underscore_delete_many(self, mock_session):
         foo = Mock()
-        docs.BaseMixin._delete_many([foo])
+        assert docs.BaseMixin._delete_many([foo]) == 1
         mock_session.assert_called_once_with()
         mock_session().delete.assert_called_with(foo)
         assert mock_session().delete.call_count == 1
@@ -394,9 +394,10 @@ class TestBaseMixin(object):
     def test_underscore_delete_many_query(self, mock_on_bulk):
         from sqlalchemy.orm.query import Query
         items = Query('asd')
+        items.count = Mock(return_value=4)
         items.all = Mock(return_value=[1, 2, 3])
         items.delete = Mock()
-        docs.BaseMixin._delete_many(items)
+        assert docs.BaseMixin._delete_many(items) == 4
         items.delete.assert_called_once_with(
             synchronize_session=False)
         mock_on_bulk.assert_called_once_with(
@@ -404,7 +405,7 @@ class TestBaseMixin(object):
 
     def test_underscore_update_many(self):
         item = Mock()
-        docs.BaseMixin._update_many([item], foo='bar')
+        assert docs.BaseMixin._update_many([item], foo='bar') == 1
         item.update.assert_called_once_with(
             {'foo': 'bar'}, refresh_index=None)
 
@@ -412,7 +413,8 @@ class TestBaseMixin(object):
         from sqlalchemy.orm.query import Query
         items = Query('asd')
         items.update = Mock()
-        docs.BaseMixin._update_many(items, foo='bar')
+        items.count = Mock(return_value=4)
+        assert docs.BaseMixin._update_many(items, foo='bar') == 4
         items.update.assert_called_once_with(
             {'foo': 'bar'}, synchronize_session='fetch')
 
