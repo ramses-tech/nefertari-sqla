@@ -520,13 +520,10 @@ class BaseMixin(object):
         a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
-            try:
-                items._refresh_index = refresh_index
-                items.update(
-                    params, synchronize_session=synchronize_session)
-                return cls.count(items)
-            except Exception as ex:
-                log.error(str(ex))
+            items._refresh_index = refresh_index
+            items.update(
+                params, synchronize_session=synchronize_session)
+            return cls.count(items)
         items_count = len(items)
         for item in items:
             item.update(params, refresh_index=refresh_index)
