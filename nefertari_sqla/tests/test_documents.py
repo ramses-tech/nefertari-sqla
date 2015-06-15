@@ -307,9 +307,9 @@ class TestBaseMixin(object):
 
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
-        assert simple_model.fields_to_query() == [
-            '_count', '_start', 'name', '_sort', 'updated_at',
-            '_version', '_limit', '_fields', 'id', '_page']
+        assert sorted(simple_model.fields_to_query()) == [
+            '_count', '_fields', '_limit', '_page', '_sort',
+            '_start', '_version', 'id', 'name', 'updated_at']
 
     @patch.object(docs.BaseMixin, 'get_resource')
     def test_get(self, get_res):
@@ -524,6 +524,12 @@ class TestBaseMixin(object):
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
 
+        # Nulify
+        myobj.update_iterables("", attr='settings', unique=False)
+        assert myobj.settings == {}
+        myobj.update_iterables(None, attr='settings', unique=False)
+        assert myobj.settings == {}
+
     @patch.object(docs, 'object_session')
     def test_update_iterables_list(self, obj_session, memory_db):
         class MyModel(docs.BaseDocument):
@@ -538,22 +544,28 @@ class TestBaseMixin(object):
             {'setting1': '', 'setting2': '', '__boo': 'boo'},
             attr='settings', save=False)
         assert not obj_session.called
-        assert myobj.settings == ['setting1', 'setting2']
+        assert sorted(myobj.settings) == ['setting1', 'setting2']
 
         # New values to existing value
         myobj.update_iterables(
             {'-setting1': '', 'setting3': ''}, attr='settings',
             unique=True, save=False)
         assert not obj_session.called
-        assert myobj.settings == ['setting2', 'setting3']
+        assert sorted(myobj.settings) == ['setting2', 'setting3']
 
         # With save
         myobj.update_iterables(
             {'setting2': ''}, attr='settings', unique=False, save=True)
-        assert myobj.settings == ['setting2', 'setting3', 'setting2']
+        assert sorted(myobj.settings) == ['setting2', 'setting2', 'setting3']
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
+
+        # Nulify
+        myobj.update_iterables(None, attr='settings', unique=False)
+        assert myobj.settings == []
+        myobj.update_iterables("", attr='settings', unique=False)
+        assert myobj.settings == []
 
     @patch.object(docs, 'object_session')
     def test_get_reference_documents(self, mock_sess, memory_db):
@@ -647,7 +659,7 @@ class TestBaseDocument(object):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
-        err.message = 'duplicate'
+        err.args = ('duplicate',)
         obj_session().flush.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:
@@ -671,7 +683,7 @@ class TestBaseDocument(object):
         memory_db()
 
         err = IntegrityError(None, None, None, None)
-        err.message = 'duplicate'
+        err.args = ('duplicate',)
         mock_upd.side_effect = err
 
         with pytest.raises(JHTTPConflict) as ex:
@@ -746,7 +758,7 @@ class TestBaseDocument(object):
         obj.apply_processors = Mock()
         obj.apply_before_validation()
         obj.apply_processors.assert_called_once_with(
-            ['id', 'updated_at', '_version'], before=True)
+            ['_version', 'id', 'updated_at'], before=True)
 
     def test_apply_processors(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -819,7 +831,7 @@ class TestGetCollection(object):
         memory_db()
         simple_model(id=1, name='foo').save()
         result = simple_model.get_collection(_limit=1, _fields=['name'])
-        assert result.all() == [(u'foo',)]
+        assert result.all() == [('foo',)]
 
     def test_offset(self, simple_model, memory_db):
         memory_db()
