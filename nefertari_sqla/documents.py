@@ -493,19 +493,22 @@ class BaseMixin(object):
         'after_bulk_delete' ORM event.
         """
         if isinstance(items, Query):
+            items_count = cls.count(items)
             try:
                 delete_items = items.all()
                 items.delete(
                     synchronize_session=synchronize_session)
                 on_bulk_delete(cls, delete_items, refresh_index=refresh_index)
-                return
+                return items_count
             except Exception as ex:
                 log.error(str(ex))
+        items_count = len(items)
         session = Session()
         for item in items:
             item._refresh_index = refresh_index
             session.delete(item)
         session.flush()
+        return items_count
 
     @classmethod
     def _update_many(cls, items, synchronize_session='fetch',
@@ -520,14 +523,14 @@ class BaseMixin(object):
         a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
-            try:
-                items._refresh_index = refresh_index
-                return items.update(
-                    params, synchronize_session=synchronize_session)
-            except Exception as ex:
-                log.error(str(ex))
+            items._refresh_index = refresh_index
+            items.update(
+                params, synchronize_session=synchronize_session)
+            return cls.count(items)
+        items_count = len(items)
         for item in items:
             item.update(params, refresh_index=refresh_index)
+        return items_count
 
     def __repr__(self):
         parts = []
