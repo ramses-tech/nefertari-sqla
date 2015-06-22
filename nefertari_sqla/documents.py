@@ -1,6 +1,5 @@
 import copy
 import logging
-from datetime import datetime
 
 import six
 from sqlalchemy.orm import (
@@ -18,7 +17,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import ListField, DictField, DateTimeField, IntegerField
+from .fields import ListField, DictField, IntegerField
 from . import types
 
 
