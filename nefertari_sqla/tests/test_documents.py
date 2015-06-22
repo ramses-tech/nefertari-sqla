@@ -101,9 +101,7 @@ class TestBaseMixin(object):
                     'id': {'type': 'string'},
                     'my_id': {'type': 'long'},
                     'name': {'type': 'string'},
-                    'parent': {'type': 'string'},
-                    'updated_at': {'format': 'dateOptionalTime',
-                                   'type': 'date'}
+                    'parent': {'type': 'string'}
                 }
             }
         }
@@ -115,9 +113,7 @@ class TestBaseMixin(object):
                     'child_id': {'type': 'string'},
                     'id': {'type': 'string'},
                     'name': {'type': 'string'},
-                    'myself': {'type': 'object'},
-                    'updated_at': {'format': 'dateOptionalTime',
-                                   'type': 'date'}
+                    'myself': {'type': 'object'}
                 }
             }
         }
@@ -187,7 +183,7 @@ class TestBaseMixin(object):
         memory_db()
 
         query_set = Mock()
-        _fields = ['-title', '-_version', '-updated_at']
+        _fields = ['-title', '-_version']
         MyModel.apply_fields(query_set, _fields)
         query_set.with_entities.assert_called_once_with(
             MyModel.desc, MyModel.id, MyModel.name)
@@ -303,13 +299,13 @@ class TestBaseMixin(object):
     def test_native_fields(self, simple_model, memory_db):
         memory_db()
         assert simple_model.native_fields() == [
-            'updated_at', '_version', 'id', 'name']
+            '_version', 'id', 'name']
 
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
         assert sorted(simple_model.fields_to_query()) == [
             '_count', '_fields', '_limit', '_page', '_sort',
-            '_start', '_version', 'id', 'name', 'updated_at']
+            '_start', '_version', 'id', 'name']
 
     @patch.object(docs.BaseMixin, 'get_resource')
     def test_get(self, get_res):
@@ -456,14 +452,12 @@ class TestBaseMixin(object):
             'fk_field': None,
             'name': None,
             'model2': None,
-            'updated_at': None,
         }
 
         assert MyModel2.get_null_values() == {
             '_version': None,
             'models1': [],
             'name': None,
-            'updated_at': None,
         }
 
     def test_to_dict(self, memory_db):
@@ -482,8 +476,7 @@ class TestBaseMixin(object):
 
         result = myobj1.to_dict()
         assert list(sorted(result.keys())) == [
-            '_type', '_version', 'id', 'other_obj', 'other_obj2', 'other_obj3',
-            'updated_at']
+            '_type', '_version', 'id', 'other_obj', 'other_obj2', 'other_obj3']
         assert result['_type'] == 'MyModel'
         assert result['id'] == 1
         # Not nester one-to-one
@@ -633,14 +626,12 @@ class TestBaseDocument(object):
 
         myobj = simple_model(id=None)
         assert myobj._version is None
-        assert myobj.updated_at is None
         myobj._bump_version()
 
         myobj.save()
         myobj.name = 'foo'
         myobj._bump_version()
         assert myobj._version == 1
-        assert isinstance(myobj.updated_at, datetime)
 
     @patch.object(docs, 'object_session')
     def test_save(self, obj_session, simple_model, memory_db):
@@ -758,7 +749,7 @@ class TestBaseDocument(object):
         obj.apply_processors = Mock()
         obj.apply_before_validation()
         obj.apply_processors.assert_called_once_with(
-            ['_version', 'id', 'updated_at'], before=True)
+            ['_version', 'id'], before=True)
 
     def test_apply_processors(self, memory_db):
         class MyModel(docs.BaseDocument):
