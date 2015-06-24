@@ -1,6 +1,5 @@
 import copy
 import logging
-from datetime import datetime
 
 import six
 from sqlalchemy.orm import (
@@ -18,7 +17,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import ListField, DictField, DateTimeField, IntegerField
+from .fields import ListField, DictField, IntegerField
 from . import types
 
 
@@ -702,12 +701,10 @@ class BaseDocument(BaseObject, BaseMixin):
     """
     __abstract__ = True
 
-    updated_at = DateTimeField()
     _version = IntegerField(default=0)
 
     def _bump_version(self):
         if self._is_modified():
-            self.updated_at = datetime.utcnow()
             self._version = (self._version or 0) + 1
 
     def save(self, refresh_index=None):
