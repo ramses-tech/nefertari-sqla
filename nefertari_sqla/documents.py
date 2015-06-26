@@ -510,8 +510,8 @@ class BaseMixin(object):
         return items_count
 
     @classmethod
-    def _update_many(cls, items, synchronize_session='fetch',
-                     refresh_index=None, **params):
+    def _update_many(cls, items, params, synchronize_session='fetch',
+                     refresh_index=None):
         """ Update :items: queryset or objects list.
 
         When queryset passed, Query.update() is used to update it. Note that

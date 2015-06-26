@@ -401,7 +401,7 @@ class TestBaseMixin(object):
 
     def test_underscore_update_many(self):
         item = Mock()
-        assert docs.BaseMixin._update_many([item], foo='bar') == 1
+        assert docs.BaseMixin._update_many([item], {'foo': 'bar'}) == 1
         item.update.assert_called_once_with(
             {'foo': 'bar'}, refresh_index=None)
 
@@ -410,7 +410,7 @@ class TestBaseMixin(object):
         items = Query('asd')
         items.update = Mock()
         items.count = Mock(return_value=4)
-        assert docs.BaseMixin._update_many(items, foo='bar') == 4
+        assert docs.BaseMixin._update_many(items, {'foo': 'bar'}) == 4
         items.update.assert_called_once_with(
             {'foo': 'bar'}, synchronize_session='fetch')
 
