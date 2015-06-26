@@ -475,8 +475,8 @@ class BaseMixin(object):
         return self
 
     @classmethod
-    def _delete_many(cls, items, synchronize_session=False,
-                     request_params=None):
+    def _delete_many(cls, items, request_params=None,
+                     synchronize_session=False):
         """ Delete :items: queryset or objects list.
 
         When queryset passed, Query.delete() is used to delete it. Note that
@@ -510,8 +510,8 @@ class BaseMixin(object):
         return items_count
 
     @classmethod
-    def _update_many(cls, items, params, synchronize_session='fetch',
-                     request_params=None):
+    def _update_many(cls, items, params, request_params=None,
+                     synchronize_session='fetch'):
         """ Update :items: queryset or objects list.
 
         When queryset passed, Query.update() is used to update it. Note that
