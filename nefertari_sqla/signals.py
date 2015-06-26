@@ -2,11 +2,10 @@ import logging
 
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import object_session, class_mapper
+from sqlalchemy.orm import object_session, class_mapper, attributes
 from pyramid_sqlalchemy import Session
 
 from nefertari.utils import to_dicts
-
 
 log = logging.getLogger(__name__)
 
@@ -26,16 +25,28 @@ def on_after_insert(mapper, connection, target):
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
+
     index_object(reloaded, refresh_index=refresh_index)
 
 
 def on_after_update(mapper, connection, target):
     refresh_index = getattr(target, '_refresh_index', None)
-    session = object_session(target)
+    from .documents import BaseDocument
+
+    # Reindex old one-to-one related object
+    committed_state = attributes.instance_state(target).committed_state
+    for field, value in committed_state.items():
+        if isinstance(value, BaseDocument):
+            obj_session = object_session(value)
+            # Make sure object is not updated yet
+            if not obj_session.is_modified(value):
+                obj_session.expire(value)
+            index_object(value, with_refs=False,
+                         refresh_index=refresh_index)
 
     # Reload `target` to get access to processed fields values
-    attributes = [c.name for c in class_mapper(target.__class__).columns]
-    session.expire(target, attribute_names=attributes)
+    columns = [c.name for c in class_mapper(target.__class__).columns]
+    object_session(target).expire(target, attribute_names=columns)
     index_object(target, refresh_index=refresh_index)
 
 
