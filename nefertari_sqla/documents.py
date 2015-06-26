@@ -475,8 +475,8 @@ class BaseMixin(object):
         return self
 
     @classmethod
-    def _delete_many(cls, items, synchronize_session=False,
-                     refresh_index=None):
+    def _delete_many(cls, items, request_params=None,
+                     synchronize_session=False):
         """ Delete :items: queryset or objects list.
 
         When queryset passed, Query.delete() is used to delete it. Note that
@@ -497,21 +497,21 @@ class BaseMixin(object):
                 delete_items = items.all()
                 items.delete(
                     synchronize_session=synchronize_session)
-                on_bulk_delete(cls, delete_items, refresh_index=refresh_index)
+                on_bulk_delete(cls, delete_items, request_params)
                 return items_count
             except Exception as ex:
                 log.error(str(ex))
         items_count = len(items)
         session = Session()
         for item in items:
-            item._refresh_index = refresh_index
+            item._request_params = request_params
             session.delete(item)
         session.flush()
         return items_count
 
     @classmethod
-    def _update_many(cls, items, synchronize_session='fetch',
-                     refresh_index=None, **params):
+    def _update_many(cls, items, params, request_params=None,
+                     synchronize_session='fetch'):
         """ Update :items: queryset or objects list.
 
         When queryset passed, Query.update() is used to update it. Note that
@@ -522,13 +522,13 @@ class BaseMixin(object):
         a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
-            items._refresh_index = refresh_index
+            items._request_params = request_params
             items.update(
                 params, synchronize_session=synchronize_session)
             return cls.count(items)
         items_count = len(items)
         for item in items:
-            item.update(params, refresh_index=refresh_index)
+            item.update(params, request_params)
         return items_count
 
     def __repr__(self):
@@ -583,8 +583,8 @@ class BaseMixin(object):
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         refresh_index=None):
-        self._refresh_index = refresh_index
+                         request_params=None):
+        self._request_params = request_params
         mapper = class_mapper(self.__class__)
         columns = {c.name: c for c in mapper.columns}
         is_dict = isinstance(columns.get(attr), DictField)
@@ -622,7 +622,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(refresh_index=refresh_index)
+                self.save(request_params)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -651,7 +651,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(refresh_index=refresh_index)
+                self.save(request_params)
 
         if is_dict:
             update_dict(params)
@@ -702,10 +702,10 @@ class BaseDocument(BaseObject, BaseMixin):
         if self._is_modified():
             self._version = (self._version or 0) + 1
 
-    def save(self, refresh_index=None):
+    def save(self, request_params=None):
         session = object_session(self)
         self._bump_version()
-        self._refresh_index = refresh_index
+        self._request_params = request_params
         session = session or Session()
         try:
             self.apply_before_validation()
@@ -723,8 +723,8 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def update(self, params, refresh_index=None):
-        self._refresh_index = refresh_index
+    def update(self, params, request_params=None):
+        self._request_params = request_params
         try:
             self._update(params)
             self._bump_version()
@@ -743,8 +743,8 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def delete(self, refresh_index=None):
-        self._refresh_index = refresh_index
+    def delete(self, request_params=None):
+        self._request_params = request_params
         object_session(self).delete(self)
 
     def apply_processors(self, column_names=None, before=False, after=False):
