@@ -168,50 +168,6 @@ class TestInterval(object):
         assert isinstance(value, datetime.timedelta)
 
 
-class TestDict(object):
-
-    def test_load_dialect_impl_postgresql(self):
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'postgresql'
-        field.load_dialect_impl(dialect=dialect)
-        assert field.is_postgresql
-        dialect.type_descriptor.assert_called_once_with(HSTORE)
-
-    def test_load_dialect_impl_not_postgresql(self):
-        from sqlalchemy.types import UnicodeText
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'some_other'
-        field.load_dialect_impl(dialect=dialect)
-        assert not field.is_postgresql
-        dialect.type_descriptor.assert_called_once_with(UnicodeText)
-
-    def test_process_bind_param_postgres(self):
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'postgresql'
-        assert {'q': 'f'} == field.process_bind_param({'q': 'f'}, dialect)
-
-    def test_process_bind_param_not_postgres(self):
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'some_other'
-        assert '{"q": "f"}' == field.process_bind_param({'q': 'f'}, dialect)
-
-    def test_process_result_value_postgres(self):
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'postgresql'
-        assert {'q': 'f'} == field.process_result_value({'q': 'f'}, dialect)
-
-    def test_process_result_value_not_postgres(self):
-        field = types.Dict()
-        dialect = Mock()
-        dialect.name = 'some_other'
-        assert {'q': 'f'} == field.process_result_value('{"q": "f"}', dialect)
-
-
 class TestChoiceArray(object):
 
     @patch.object(types, 'ARRAY')

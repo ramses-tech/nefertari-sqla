@@ -154,43 +154,6 @@ class Time(types.TypeDecorator):
     impl = types.Time
 
 
-class Dict(types.TypeDecorator):
-    """ Represents a dictionary of values.
-
-
-    If 'postgresql' is used, postgress.HSTORE type is used for db column
-    type. Otherwise `UnicodeText` is used.
-    """
-    impl = HSTORE
-
-    def load_dialect_impl(self, dialect):
-        """ Based on :dialect.name: determine type to be used.
-
-        `postgresql.HSTORE` is used in case `postgresql` database is used.
-        Otherwise `types.UnicodeText` is used.
-        """
-        if dialect.name == 'postgresql':
-            self.is_postgresql = True
-            return dialect.type_descriptor(HSTORE)
-        else:
-            self.is_postgresql = False
-            return dialect.type_descriptor(types.UnicodeText)
-
-    def process_bind_param(self, value, dialect):
-        if dialect.name == 'postgresql':
-            return value
-        if value is not None:
-            value = json.dumps(value)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if dialect.name == 'postgresql':
-            return value
-        if value is not None:
-            value = json.loads(value)
-        return value
-
-
 class ChoiceArray(types.TypeDecorator):
     """ Represents a list of values.
 

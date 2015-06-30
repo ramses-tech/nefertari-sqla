@@ -76,6 +76,7 @@ class TestBaseMixin(object):
             __tablename__ = 'mymodel'
             my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
+            settings = fields.DictField()
             groups = fields.ListField(
                 item_type=fields.StringField,
                 choices=['admin', 'user'])
@@ -97,6 +98,7 @@ class TestBaseMixin(object):
                 'properties': {
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
+                    'settings': {'type': 'object'},
                     'groups': {'type': 'string'},
                     'id': {'type': 'string'},
                     'my_id': {'type': 'long'},
@@ -262,23 +264,18 @@ class TestBaseMixin(object):
             settings = fields.DictField()
         memory_db()
         MyModel.groups.contains = Mock()
-        MyModel.settings.contains = Mock()
-        MyModel.settings.has_key = Mock()
         MyModel.groups.type.is_postgresql = True
-        MyModel.settings.type.is_postgresql = True
 
-        params = {'settings': 'foo', 'groups': 'bar', 'id': 1}
+        params = {'groups': 'bar', 'id': 1}
         iterables, params = MyModel._pop_iterables(params)
         assert params == {'id': 1}
-        assert not MyModel.settings.contains.called
-        MyModel.settings.has_key.assert_called_once_with('foo')
         MyModel.groups.contains.assert_called_once_with(['bar'])
+        assert len(iterables) == 1
 
-        params = {'settings.foo': 'foo2', 'groups': 'bar', 'id': 1}
-        iterables, params = MyModel._pop_iterables(params)
-        assert params == {'id': 1}
-        assert MyModel.settings.has_key.call_count == 1
-        MyModel.settings.contains.assert_called_once_with({'foo': 'foo2'})
+        with pytest.raises(Exception) as ex:
+            MyModel._pop_iterables({'settings': 'foo'})
+        expected = 'DictField database querying is not supported'
+        assert str(ex.value) == expected
 
     @patch.object(docs.BaseMixin, 'native_fields')
     def test_has_field(self, mock_fields):

@@ -10,6 +10,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
+from sqlalchemy_utils.types.json import JSONType
 
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
@@ -72,7 +73,7 @@ TYPES_MAP = {
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
-    types.Dict: {'type': 'object'},
+    JSONType: {'type': 'object'},
 
     types.LimitedNumeric: {'type': 'double'},
     types.LimitedFloat: {'type': 'double'},
@@ -269,7 +270,7 @@ class BaseMixin(object):
         SQLA expressions to query the database.
 
         Iterable values are found by checking which keys from :params:
-        correspond to names of Dict/List fields on model.
+        correspond to names of List fields on model.
         If ListField uses the `postgresql.ARRAY` type, the value is
         wrapped in a list.
         """
@@ -279,9 +280,6 @@ class BaseMixin(object):
                    if isinstance(c, (ListField, DictField))}
 
         for key, val in params.items():
-            suffix = None
-            if '.' in key:
-                key, suffix = key.split('.')[:2]
             col = columns.get(key)
             if col is None:
                 continue
@@ -294,17 +292,9 @@ class BaseMixin(object):
                 expr = field_obj.contains(val)
 
             if isinstance(col, DictField):
-                if is_postgres:
-                    if suffix is not None:
-                        # Check that field contains {suffix: val} pair
-                        expr = field_obj.contains({suffix: val})
-                    else:
-                        # Check that field contains `val` key
-                        expr = field_obj.has_key(val)
-                else:
-                    expr = field_obj.contains(val)
+                raise Exception('DictField database querying is not '
+                                'supported')
 
-            key = key if suffix is None else '.'.join([key, suffix])
             iterables[key] = expr
 
         for key in iterables.keys():

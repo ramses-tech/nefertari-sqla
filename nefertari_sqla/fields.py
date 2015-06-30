@@ -1,5 +1,7 @@
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import Column, ForeignKey
+from sqlalchemy_utils.types.json import JSONType
+
 # Since SQLAlchemy 1.0.0
 # from sqlalchemy.types import MatchType
 from .types import (
@@ -20,7 +22,6 @@ from .types import (
     PickleType,
     Time,
     Choice,
-    Dict,
     ChoiceArray,
 )
 
@@ -276,7 +277,7 @@ class UnicodeTextField(StringField):
 
 
 class DictField(BaseField):
-    _sqla_type_cls = Dict
+    _sqla_type_cls = JSONType
     _type_unchanged_kwargs = ()
 
     def process_type_args(self, kwargs):
