@@ -758,7 +758,8 @@ class BaseDocument(BaseObject, BaseMixin):
                 processed_value = column.apply_processors(
                     instance=self, new_value=new_value,
                     before=before, after=after)
-                setattr(self, name, processed_value)
+                if new_value != processed_value:
+                    setattr(self, name, processed_value)
 
     def apply_before_validation(self):
         """ Determine changed columns and run `self.apply_processors` to
