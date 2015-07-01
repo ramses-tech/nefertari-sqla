@@ -98,7 +98,7 @@ class TestBaseMixin(object):
                 'properties': {
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
-                    'settings': {'type': 'object'},
+                    'settings': {'type': 'object', 'enabled': False},
                     'groups': {'type': 'string'},
                     'id': {'type': 'string'},
                     'my_id': {'type': 'long'},

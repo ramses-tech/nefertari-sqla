@@ -73,7 +73,7 @@ TYPES_MAP = {
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
-    JSONType: {'type': 'object'},
+    JSONType: {'type': 'object', 'enabled': False},
 
     types.LimitedNumeric: {'type': 'double'},
     types.LimitedFloat: {'type': 'double'},
