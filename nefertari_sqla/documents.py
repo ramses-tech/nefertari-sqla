@@ -542,11 +542,14 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
+        skip_fields = {'_version', '_acl'}
         null_values = {}
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
         columns.update({r.key: r for r in mapper.relationships})
         for name, col in columns.items():
+            if name in skip_fields:
+                continue
             if isinstance(col, RelationshipProperty) and col.uselist:
                 value = []
             else:
