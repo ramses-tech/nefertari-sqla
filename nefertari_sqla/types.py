@@ -288,13 +288,13 @@ class ACLType(JSONType):
         String cleaning and case conversion is should also performed here.
         In case ACL is already converted it won't change.
         """
-        new_acl = []
+        string_acl = []
         for action, identifier, permissions in value:
             action = self._stringify_action(action)
             identifier = self._stringify_identifier(identifier)
             permissions = self._stringify_permissions(permissions)
-            new_acl.append([action, identifier, permissions])
-        return new_acl
+            string_acl.append([action, identifier, permissions])
+        return string_acl
 
     def process_bind_param(self, value, dialect):
         """ Validate data and dump to JSON for storing in DB. """
@@ -303,5 +303,27 @@ class ACLType(JSONType):
         return super(ACLType, self).process_bind_param(value, dialect)
 
     @classmethod
-    def objectify_acl(self, db_acl):
-        pass
+    def _objectify_action(cls, action):
+        inverted_actions = {v: k for k, v in cls.ACTIONS.items()}
+        return inverted_actions.get(action, action)
+
+    @classmethod
+    def _objectify_identifier(cls, identifier):
+        inverted_identifiers = {v: k for k, v in cls.INDENTIFIERS.items()}
+        return inverted_identifiers.get(identifier, identifier)
+
+    @classmethod
+    def _objectify_permissions(cls, permissions):
+        inverted_permissions = {v: k for k, v in cls.PERMISSIONS.items()}
+        return [inverted_permissions.get(perm, perm)
+                for perm in permissions]
+
+    @classmethod
+    def objectify_acl(cls, value):
+        object_acl = []
+        for action, identifier, permissions in value:
+            action = cls._objectify_action(action)
+            identifier = cls._objectify_identifier(identifier)
+            permissions = cls._objectify_permissions(permissions)
+            object_acl.append([action, identifier, permissions])
+        return object_acl

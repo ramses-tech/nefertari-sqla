@@ -35,6 +35,7 @@ from .fields import (
     ForeignKeyField,
     DictField,
     ListField,
+    ACLField,
 )
 
 log = logging.getLogger(__name__)

@@ -690,10 +690,14 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
     _acl = ACLField()
 
-    # @property
-    # def __acl__(self):
-    #     # Use ACLType.objectify_acl
-    #     pass
+    @property
+    def __acl__(self):
+        from .types import ACLType
+        acl = ACLType.objectify_acl(self._acl)
+        log.info('Loaded ACL from database for {}({}): {}'.format(
+            self.__class__.__name__,
+            getattr(self, self.pk_field()), acl))
+        return acl
 
     def _bump_version(self):
         if self._is_modified():
