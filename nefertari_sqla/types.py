@@ -2,7 +2,8 @@ import json
 import datetime
 
 from sqlalchemy import types
-from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy_utils.types.json import JSONType
 
 
 class LengthLimitedStringMixin(object):
@@ -217,3 +218,93 @@ class ChoiceArray(types.TypeDecorator):
         if value is not None:
             value = json.loads(value)
         return value
+
+
+from pyramid.security import (
+    Allow, Deny,
+    Everyone, Authenticated,
+    ALL_PERMISSIONS)
+from nefertari.resource import ACTIONS
+
+
+class ACLType(JSONType):
+    """ Subclass of `JSONType` used to store Pyramid ACL. """
+    ACTIONS = {
+        Allow: 'allow',
+        Deny: 'deny',
+    }
+    INDENTIFIERS = {
+        Everyone: 'everyone',
+        Authenticated: 'authenticated',
+    }
+    PERMISSIONS = {
+        ALL_PERMISSIONS: 'all',
+    }
+
+    def _validate_action(self, action):
+        valid_actions = self.ACTIONS.values()
+        if action not in valid_actions:
+            err = 'Invalid ACL action value: {}. Valid values are: {}'
+            raise ValueError(err.format(action, ', '.join(valid_actions)))
+
+    def _validate_permissions(self, permissions):
+        valid_perms = set(self.PERMISSIONS.values()) + set(ACTIONS)
+        invalid_perms = set(permissions) - set(valid_perms)
+        if invalid_perms:
+            err = 'Invalid ACL permission values: {}. Valid values are: {}'
+            raise ValueError(err.format(
+                ', '.join(invalid_perms), ', '.join(valid_perms)))
+
+    def validate_acl(self, value):
+        """ Validate ACL elements.
+
+        Identifiers are not validated as they may be arbitrary strings.
+        """
+        for action, identifier, permissions in value:
+            self._validate_action(action)
+            self._validate_permissions(permissions)
+
+    def _stringify_action(self, action):
+        action = self.ACTIONS.get(action, action)
+        return action.strip().lower()
+
+    def _stringify_identifier(self, identifier):
+        return self.INDENTIFIERS.get(identifier, identifier)
+
+    def _stringify_permissions(self, permissions):
+        if not isinstance(permissions, list):
+            permissions = [permissions]
+        clean_permissions = []
+        for permission in permissions:
+            try:
+                permission = permission.strip().lower()
+            except AttributeError:
+                pass
+            clean_permissions.append(permission)
+        return [self.PERMISSIONS.get(perm, perm)
+                for perm in clean_permissions]
+
+    def stringify_acl(self, value):
+        """ Get valid Pyramid ACL and convert it into object of the same
+        structure with Pyramid ACL values translated to strings.
+
+        String cleaning and case conversion is should also performed here.
+        In case ACL is already converted it won't change.
+        """
+        new_acl = []
+        for action, identifier, permissions in value:
+            action = self._stringify_action(action)
+            identifier = self._stringify_identifier(identifier)
+            permissions = self._stringify_permissions(permissions)
+            new_acl.append([action, identifier, permissions])
+        return new_acl
+
+    def process_bind_param(self, value, dialect):
+        """ Validate data and dump to JSON for storing in DB. """
+        value = self.stringify_acl(value)
+        self.validate_acl(value)
+        return super(ACLType, self).process_bind_param(value, dialect)
+
+    @classmethod
+    def objectify_acl(self, db_acl):
+        pass

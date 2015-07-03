@@ -688,6 +688,11 @@ class BaseDocument(BaseObject, BaseMixin):
 
     _version = IntegerField(default=0)
 
+    @property
+    def __acl__(self):
+        # Use ACLType.objectify_acl
+        pass
+
     def _bump_version(self):
         if self._is_modified():
             self._version = (self._version or 0) + 1
