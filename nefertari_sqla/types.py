@@ -4,6 +4,9 @@ import datetime
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy_utils.types.json import JSONType
+from pyramid.security import (
+    Allow, Deny, Everyone, Authenticated, ALL_PERMISSIONS)
+from nefertari.resource import ACTIONS as NEF_ACTIONS
 
 
 class LengthLimitedStringMixin(object):
@@ -220,13 +223,6 @@ class ChoiceArray(types.TypeDecorator):
         return value
 
 
-from pyramid.security import (
-    Allow, Deny,
-    Everyone, Authenticated,
-    ALL_PERMISSIONS)
-from nefertari.resource import ACTIONS
-
-
 class ACLType(JSONType):
     """ Subclass of `JSONType` used to store Pyramid ACL. """
     ACTIONS = {
@@ -248,7 +244,8 @@ class ACLType(JSONType):
             raise ValueError(err.format(action, ', '.join(valid_actions)))
 
     def _validate_permissions(self, permissions):
-        valid_perms = set(self.PERMISSIONS.values()) + set(ACTIONS)
+        valid_perms = set(self.PERMISSIONS.values())
+        valid_perms.update(NEF_ACTIONS)
         invalid_perms = set(permissions) - set(valid_perms)
         if invalid_perms:
             err = 'Invalid ACL permission values: {}. Valid values are: {}'

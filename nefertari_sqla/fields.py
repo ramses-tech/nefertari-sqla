@@ -294,7 +294,7 @@ class ACLField(BaseField):
 
     def process_type_args(self, kwargs):
         type_args, type_kw, cleaned_kw = super(
-            DictField, self).process_type_args(kwargs)
+            ACLField, self).process_type_args(kwargs)
         cleaned_kw['default'] = cleaned_kw.get('default') or []
         return type_args, type_kw, cleaned_kw
 

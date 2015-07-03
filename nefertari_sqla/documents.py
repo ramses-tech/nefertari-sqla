@@ -18,7 +18,7 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import ListField, DictField, IntegerField
+from .fields import ListField, DictField, IntegerField, ACLField
 from . import types
 
 
@@ -70,6 +70,7 @@ TYPES_MAP = {
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
     types.Choice: {'type': 'string'},
+    types.ACLType: {'type': 'string'},
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
@@ -687,11 +688,12 @@ class BaseDocument(BaseObject, BaseMixin):
     __abstract__ = True
 
     _version = IntegerField(default=0)
+    _acl = ACLField()
 
-    @property
-    def __acl__(self):
-        # Use ACLType.objectify_acl
-        pass
+    # @property
+    # def __acl__(self):
+    #     # Use ACLType.objectify_acl
+    #     pass
 
     def _bump_version(self):
         if self._is_modified():
