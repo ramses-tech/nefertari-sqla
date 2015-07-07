@@ -305,7 +305,7 @@ class ACLType(JSONType):
     @classmethod
     def _objectify_action(cls, action):
         inverted_actions = {v: k for k, v in cls.ACTIONS.items()}
-        return inverted_actions.get(action, action)
+        return inverted_actions[action]
 
     @classmethod
     def _objectify_identifier(cls, identifier):
