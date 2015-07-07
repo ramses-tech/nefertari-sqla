@@ -689,6 +689,7 @@ class BaseDocument(BaseObject, BaseMixin):
     should be abstract as well (__abstract__ = True).
     """
     __abstract__ = True
+    __item_acl__ = None
 
     _version = IntegerField(default=0)
     _acl = ACLField()
@@ -706,8 +707,14 @@ class BaseDocument(BaseObject, BaseMixin):
         if self._is_modified():
             self._version = (self._version or 0) + 1
 
+    def _set_default_acl(self):
+        state = attributes.instance_state(self)
+        if not state.persistent and self._acl is None:
+            self._acl = self.__item_acl__
+
     def save(self, request_params=None):
         session = object_session(self)
+        self._set_default_acl()
         self._bump_version()
         self._request_params = request_params
         session = session or Session()
