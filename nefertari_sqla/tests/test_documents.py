@@ -642,7 +642,7 @@ class TestBaseDocument(object):
         obj._set_default_acl()
         assert obj._acl == [(1, 2, 3)]
 
-    def test_set_default_acl_apready_present(
+    def test_set_default_acl_already_present(
             self, simple_model, memory_db):
         simple_model.__item_acl__ = [(1, 2, 3)]
         obj = simple_model()
