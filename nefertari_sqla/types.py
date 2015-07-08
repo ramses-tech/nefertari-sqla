@@ -224,7 +224,12 @@ class ChoiceArray(types.TypeDecorator):
 
 
 class ACLType(JSONType):
-    """ Subclass of `JSONType` used to store Pyramid ACL. """
+    """ Subclass of `JSONType` used to store Pyramid ACL.
+
+    ACL is stored as nested list with all Pyramid special actions,
+    identifieds and permissions converted to strings.
+    """
+
     ACTIONS = {
         Allow: 'allow',
         Deny: 'deny',
@@ -238,12 +243,21 @@ class ACLType(JSONType):
     }
 
     def _validate_action(self, action):
+        """ Validate :action: has allowed value.
+
+        :param action: String representation of Pyramid ACL action.
+        """
         valid_actions = self.ACTIONS.values()
         if action not in valid_actions:
             err = 'Invalid ACL action value: {}. Valid values are: {}'
             raise ValueError(err.format(action, ', '.join(valid_actions)))
 
     def _validate_permissions(self, permissions):
+        """ Validate :permissions: has allowed value.
+
+        Valid permissions are names of nefertari view methods or 'all'.
+        :param permissions: List of strings representing ACL permissions.
+        """
         valid_perms = set(self.PERMISSIONS.values())
         valid_perms.update(NEF_ACTIONS)
         invalid_perms = set(permissions) - set(valid_perms)
@@ -262,13 +276,21 @@ class ACLType(JSONType):
             self._validate_permissions(permissions)
 
     def _stringify_action(self, action):
+        """ Convert Pyramid ACL action object to string. """
         action = self.ACTIONS.get(action, action)
         return action.strip().lower()
 
     def _stringify_identifier(self, identifier):
+        """ Convert to string specific ACL identifiers if any are
+        present.
+        """
         return self.INDENTIFIERS.get(identifier, identifier)
 
     def _stringify_permissions(self, permissions):
+        """ Convert to string special ACL permissions if any present.
+
+        If :permissions: is wrapped in list if it's not already a list.
+        """
         if not isinstance(permissions, list):
             permissions = [permissions]
         clean_permissions = []
@@ -297,29 +319,41 @@ class ACLType(JSONType):
         return string_acl
 
     def process_bind_param(self, value, dialect):
-        """ Validate data and dump to JSON for storing in DB. """
+        """ Convert Pyramid ACL objects into string representation,
+        validate and store in DB as JSON.
+        """
         value = self.stringify_acl(value)
         self.validate_acl(value)
         return super(ACLType, self).process_bind_param(value, dialect)
 
     @classmethod
     def _objectify_action(cls, action):
+        """ Convert string representation of action into valid
+        Pyramid ACL action.
+        """
         inverted_actions = {v: k for k, v in cls.ACTIONS.items()}
         return inverted_actions[action]
 
     @classmethod
     def _objectify_identifier(cls, identifier):
+        """ Convert string representation if special Pyramid identifiers
+        into valid Pyramid ACL indentifier objects.
+        """
         inverted_identifiers = {v: k for k, v in cls.INDENTIFIERS.items()}
         return inverted_identifiers.get(identifier, identifier)
 
     @classmethod
     def _objectify_permissions(cls, permissions):
+        """ Convert string representation if special Pyramid permissions
+        into valid Pyramid ACL permission objects.
+        """
         inverted_permissions = {v: k for k, v in cls.PERMISSIONS.items()}
         return [inverted_permissions.get(perm, perm)
                 for perm in permissions]
 
     @classmethod
     def objectify_acl(cls, value):
+        """ Convert string representation of ACL into valid Pyramid ACL. """
         object_acl = []
         for action, identifier, permissions in value:
             action = cls._objectify_action(action)

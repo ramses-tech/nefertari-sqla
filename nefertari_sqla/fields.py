@@ -289,6 +289,7 @@ class DictField(ProcessableMixin, BaseField):
 
 
 class ACLField(ProcessableMixin, BaseField):
+    """ Field used to store Pyramid ACLs. """
     _sqla_type_cls = ACLType
     _type_unchanged_kwargs = ()
 

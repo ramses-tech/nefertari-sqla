@@ -697,6 +697,7 @@ class BaseDocument(BaseObject, BaseMixin):
 
     @property
     def __acl__(self):
+        """ Convert stored ACL to valid Pyramid ACL. """
         acl = objectify_acl(self._acl)
         log.info('Loaded ACL from database for {}({}): {}'.format(
             self.__class__.__name__,
@@ -708,6 +709,7 @@ class BaseDocument(BaseObject, BaseMixin):
             self._version = (self._version or 0) + 1
 
     def _set_default_acl(self):
+        """ Set default object ACL if not already set. """
         state = attributes.instance_state(self)
         if not state.persistent and self._acl is None:
             self._acl = self.__item_acl__
