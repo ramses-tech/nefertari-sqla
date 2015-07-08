@@ -96,7 +96,14 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
-                    '_acl': {'type': 'string'},
+                    '_acl': {
+                        'type': 'nested',
+                        'properties': {
+                            'action': {'type': 'string'},
+                            'identifier': {'type': 'string'},
+                            'permission': {'type': 'string'},
+                        },
+                    },
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'settings': {'type': 'object', 'enabled': False},
@@ -111,7 +118,14 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'mymodel2': {
                 'properties': {
-                    '_acl': {'type': 'string'},
+                    '_acl': {
+                        'type': 'nested',
+                        'properties': {
+                            'action': {'type': 'string'},
+                            'identifier': {'type': 'string'},
+                            'permission': {'type': 'string'},
+                        },
+                    },
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},

@@ -252,28 +252,26 @@ class ACLType(JSONType):
             err = 'Invalid ACL action value: {}. Valid values are: {}'
             raise ValueError(err.format(action, ', '.join(valid_actions)))
 
-    def _validate_permissions(self, permissions):
-        """ Validate :permissions: has allowed value.
+    def _validate_permission(self, permission):
+        """ Validate :permission: has allowed value.
 
-        Valid permissions are names of nefertari view methods or 'all'.
-        :param permissions: List of strings representing ACL permissions.
+        Valid permission are names of nefertari view methods or 'all'.
+        :param permission: List of strings representing ACL permission.
         """
         valid_perms = set(self.PERMISSIONS.values())
         valid_perms.update(NEF_ACTIONS)
-        invalid_perms = set(permissions) - set(valid_perms)
-        if invalid_perms:
-            err = 'Invalid ACL permission values: {}. Valid values are: {}'
-            raise ValueError(err.format(
-                ', '.join(invalid_perms), ', '.join(valid_perms)))
+        if permission not in valid_perms:
+            err = 'Invalid ACL permission value: {}. Valid values are: {}'
+            raise ValueError(err.format(permission, ', '.join(valid_perms)))
 
     def validate_acl(self, value):
         """ Validate ACL elements.
 
         Identifiers are not validated as they may be arbitrary strings.
         """
-        for action, identifier, permissions in value:
-            self._validate_action(action)
-            self._validate_permissions(permissions)
+        for ac_entry in value:
+            self._validate_action(ac_entry['action'])
+            self._validate_permission(ac_entry['permission'])
 
     def _stringify_action(self, action):
         """ Convert Pyramid ACL action object to string. """
@@ -311,11 +309,20 @@ class ACLType(JSONType):
         In case ACL is already converted it won't change.
         """
         string_acl = []
-        for action, identifier, permissions in value:
+        for ac_entry in value:
+            if isinstance(ac_entry, dict):  # ACE is already in DB format
+                string_acl.append(ac_entry)
+                continue
+            action, identifier, permissions = ac_entry
             action = self._stringify_action(action)
             identifier = self._stringify_identifier(identifier)
             permissions = self._stringify_permissions(permissions)
-            string_acl.append([action, identifier, permissions])
+            for perm in permissions:
+                string_acl.append({
+                    'action': action,
+                    'identifier': identifier,
+                    'permission': perm,
+                })
         return string_acl
 
     def process_bind_param(self, value, dialect):
@@ -343,21 +350,20 @@ class ACLType(JSONType):
         return inverted_identifiers.get(identifier, identifier)
 
     @classmethod
-    def _objectify_permissions(cls, permissions):
-        """ Convert string representation if special Pyramid permissions
+    def _objectify_permission(cls, permission):
+        """ Convert string representation if special Pyramid permission
         into valid Pyramid ACL permission objects.
         """
         inverted_permissions = {v: k for k, v in cls.PERMISSIONS.items()}
-        return [inverted_permissions.get(perm, perm)
-                for perm in permissions]
+        return inverted_permissions.get(permission, permission)
 
     @classmethod
     def objectify_acl(cls, value):
         """ Convert string representation of ACL into valid Pyramid ACL. """
         object_acl = []
-        for action, identifier, permissions in value:
-            action = cls._objectify_action(action)
-            identifier = cls._objectify_identifier(identifier)
-            permissions = cls._objectify_permissions(permissions)
-            object_acl.append([action, identifier, permissions])
+        for ac_entry in value:
+            action = cls._objectify_action(ac_entry['action'])
+            identifier = cls._objectify_identifier(ac_entry['identifier'])
+            permission = cls._objectify_permission(ac_entry['permission'])
+            object_acl.append([action, identifier, permission])
         return object_acl

@@ -275,25 +275,25 @@ class TestACLType(object):
         expected = 'Invalid ACL action value: foobarbaz. Valid values are:'
         assert expected in str(ex.value)
 
-    def test_validate_permissions_valid(self):
+    def test_validate_permission_valid(self):
         obj = types.ACLType()
         try:
-            obj._validate_permissions([types.NEF_ACTIONS[0]])
+            obj._validate_permission(types.NEF_ACTIONS[0])
         except ValueError:
             raise Exception('Unexpected error')
 
-    def test_validate_permissions_invalid(self):
+    def test_validate_permission_invalid(self):
         obj = types.ACLType()
         with pytest.raises(ValueError) as ex:
-            obj._validate_permissions(['foobarbaz', types.NEF_ACTIONS[0]])
-        expected = 'Invalid ACL permission values: foobarbaz. Valid values are:'
+            obj._validate_permission('foobarbaz')
+        expected = 'Invalid ACL permission value: foobarbaz. Valid values are:'
         assert expected in str(ex.value)
 
     @patch.object(types.ACLType, '_validate_action')
-    @patch.object(types.ACLType, '_validate_permissions')
+    @patch.object(types.ACLType, '_validate_permission')
     def test_validate_acl(self, mock_perm, mock_action):
         obj = types.ACLType()
-        obj.validate_acl([(1, 2, 3)])
+        obj.validate_acl([{'action': 1, 'identifier': 2, 'permission': 3}])
         mock_action.assert_called_once_with(1)
         mock_perm.assert_called_once_with(3)
 
@@ -333,7 +333,7 @@ class TestACLType(object):
         mock_id.return_value = 2
         mock_perm.return_value = [3]
         result = obj.stringify_acl([('a', 'b', 'c')])
-        assert result == [[1, 2, [3]]]
+        assert result == [{'action': 1, 'identifier': 2, 'permission': 3}]
         mock_action.assert_called_once_with('a')
         mock_id.assert_called_once_with('b')
         mock_perm.assert_called_once_with('c')
@@ -358,19 +358,21 @@ class TestACLType(object):
             'authenticated') is Authenticated
         assert types.ACLType._objectify_identifier('foo') == 'foo'
 
-    def test_objectify_permissions(self):
-        assert types.ACLType._objectify_permissions(
-            ['all']) == [ALL_PERMISSIONS]
-        assert types.ACLType._objectify_permissions(['foo']) == ['foo']
+    def test_objectify_permission(self):
+        assert types.ACLType._objectify_permission(
+            'all') == ALL_PERMISSIONS
+        assert types.ACLType._objectify_permission('foo') == 'foo'
 
     @patch.object(types.ACLType, '_objectify_action')
     @patch.object(types.ACLType, '_objectify_identifier')
-    @patch.object(types.ACLType, '_objectify_permissions')
+    @patch.object(types.ACLType, '_objectify_permission')
     def test_objectify_acl(self, mock_perm, mock_id, mock_action):
         mock_action.return_value = 1
         mock_id.return_value = 2
         mock_perm.return_value = [3]
-        result = types.ACLType.objectify_acl([('a', 'b', 'c')])
+        result = types.ACLType.objectify_acl([
+            {'action': 'a', 'identifier': 'b', 'permission': 'c'}
+        ])
         assert result == [[1, 2, [3]]]
         mock_action.assert_called_once_with('a')
         mock_id.assert_called_once_with('b')

@@ -71,7 +71,14 @@ TYPES_MAP = {
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
     types.Choice: {'type': 'string'},
-    types.ACLType: {'type': 'string'},
+    types.ACLType: {
+        'type': 'nested',
+        'properties': {
+            'action': {'type': 'string'},
+            'identifier': {'type': 'string'},
+            'permission': {'type': 'string'},
+        }
+    },
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
