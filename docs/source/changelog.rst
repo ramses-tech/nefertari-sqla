@@ -1,9 +1,9 @@
 Changelog
 =========
 
-* :release:`0.3.1 <2015-07-06>`
+* :release:`0.3.1 <2015-07-07>`
 * :bug:`-` Fixed bug with Elasticsearch re-indexing of nested relationships
-* :bug:`-` Removed "updated_at" field from engine
+* :bug:`-` Removed 'updated_at' field from engine
 * :bug:`-` Disabled Elasticsearch indexing of DictField to allow storing arbitrary JSON data
 
 * :release:`0.3.0 <2015-06-14>`
