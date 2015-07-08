@@ -331,9 +331,12 @@ class TestACLType(object):
         obj = types.ACLType()
         mock_action.return_value = 1
         mock_id.return_value = 2
-        mock_perm.return_value = [3]
+        mock_perm.return_value = [3, 4]
         result = obj.stringify_acl([('a', 'b', 'c')])
-        assert result == [{'action': 1, 'identifier': 2, 'permission': 3}]
+        assert result == [
+            {'action': 1, 'identifier': 2, 'permission': 3},
+            {'action': 1, 'identifier': 2, 'permission': 4},
+        ]
         mock_action.assert_called_once_with('a')
         mock_id.assert_called_once_with('b')
         mock_perm.assert_called_once_with('c')
