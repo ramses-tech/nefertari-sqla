@@ -255,8 +255,8 @@ class ACLType(JSONType):
     def _validate_permission(self, permission):
         """ Validate :permission: has allowed value.
 
-        Valid permission are names of nefertari view methods or 'all'.
-        :param permission: List of strings representing ACL permission.
+        Valid permission is name of one of nefertari view methods or 'all'.
+        :param permission: String representing ACL permission name.
         """
         valid_perms = set(self.PERMISSIONS.values())
         valid_perms.update(NEF_ACTIONS)
@@ -287,9 +287,10 @@ class ACLType(JSONType):
     def _stringify_permissions(self, permissions):
         """ Convert to string special ACL permissions if any present.
 
-        If :permissions: is wrapped in list if it's not already a list.
+        If :permissions: is wrapped in list if it's not already a list
+        or tuple.
         """
-        if not isinstance(permissions, list):
+        if not isinstance(permissions, (list, tuple)):
             permissions = [permissions]
         clean_permissions = []
         for permission in permissions:
@@ -302,11 +303,14 @@ class ACLType(JSONType):
                 for perm in clean_permissions]
 
     def stringify_acl(self, value):
-        """ Get valid Pyramid ACL and convert it into object of the same
-        structure with Pyramid ACL values translated to strings.
+        """ Get valid Pyramid ACL and translate values to strings.
 
-        String cleaning and case conversion is should also performed here.
-        In case ACL is already converted it won't change.
+        String cleaning and case conversion is also performed here.
+        In case ACL is already converted it won't change. Input ACL is
+        also flattened to include a singler permission per AC entry.
+
+        Structure of result AC entries is:
+            {'action': '...', 'identifier': '...', 'permission': '...'}
         """
         string_acl = []
         for ac_entry in value:
