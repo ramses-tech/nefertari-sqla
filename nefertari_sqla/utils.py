@@ -27,3 +27,9 @@ def get_relationship_cls(field, model_cls):
     relationships = {r.key: r for r in mapper.relationships}
     field_obj = relationships[field]
     return field_obj.mapper.class_
+
+
+def objectify_acl(acl):
+    """ Given DB value of ACL convert it to Pyramid valid ACL. """
+    from .types import ACLType
+    return ACLType.objectify_acl(acl)

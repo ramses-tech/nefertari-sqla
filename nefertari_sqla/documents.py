@@ -11,14 +11,15 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 from sqlalchemy_utils.types.json import JSONType
-
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
+
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, IntegerField, ACLField
+from .utils import objectify_acl
 from . import types
 
 
@@ -696,8 +697,7 @@ class BaseDocument(BaseObject, BaseMixin):
 
     @property
     def __acl__(self):
-        from .types import ACLType
-        acl = ACLType.objectify_acl(self._acl)
+        acl = objectify_acl(self._acl)
         log.info('Loaded ACL from database for {}({}): {}'.format(
             self.__class__.__name__,
             getattr(self, self.pk_field()), acl))
