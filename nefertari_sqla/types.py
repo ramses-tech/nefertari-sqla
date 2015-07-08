@@ -325,14 +325,6 @@ class ACLType(JSONType):
                 })
         return string_acl
 
-    def process_bind_param(self, value, dialect):
-        """ Convert Pyramid ACL objects into string representation,
-        validate and store in DB as JSON.
-        """
-        value = self.stringify_acl(value)
-        self.validate_acl(value)
-        return super(ACLType, self).process_bind_param(value, dialect)
-
     @classmethod
     def _objectify_action(cls, action):
         """ Convert string representation of action into valid
@@ -367,3 +359,11 @@ class ACLType(JSONType):
             permission = cls._objectify_permission(ac_entry['permission'])
             object_acl.append([action, identifier, permission])
         return object_acl
+
+    def process_bind_param(self, value, dialect):
+        """ Convert Pyramid ACL objects into string representation,
+        validate and store in DB as JSON.
+        """
+        value = self.stringify_acl(value)
+        self.validate_acl(value)
+        return super(ACLType, self).process_bind_param(value, dialect)
