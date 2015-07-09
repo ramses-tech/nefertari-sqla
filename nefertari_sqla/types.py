@@ -223,13 +223,7 @@ class ChoiceArray(types.TypeDecorator):
         return value
 
 
-class ACLType(JSONType):
-    """ Subclass of `JSONType` used to store Pyramid ACL.
-
-    ACL is stored as nested list with all Pyramid special actions,
-    identifieds and permissions converted to strings.
-    """
-
+class ACLEncoderMixin(object):
     ACTIONS = {
         Allow: 'allow',
         Deny: 'deny',
@@ -273,18 +267,21 @@ class ACLType(JSONType):
             self._validate_action(ac_entry['action'])
             self._validate_permission(ac_entry['permission'])
 
-    def _stringify_action(self, action):
+    @classmethod
+    def _stringify_action(cls, action):
         """ Convert Pyramid ACL action object to string. """
-        action = self.ACTIONS.get(action, action)
+        action = cls.ACTIONS.get(action, action)
         return action.strip().lower()
 
-    def _stringify_identifier(self, identifier):
+    @classmethod
+    def _stringify_identifier(cls, identifier):
         """ Convert to string specific ACL identifiers if any are
         present.
         """
-        return self.INDENTIFIERS.get(identifier, identifier)
+        return cls.INDENTIFIERS.get(identifier, identifier)
 
-    def _stringify_permissions(self, permissions):
+    @classmethod
+    def _stringify_permissions(cls, permissions):
         """ Convert to string special ACL permissions if any present.
 
         If :permissions: is wrapped in list if it's not already a list
@@ -299,10 +296,11 @@ class ACLType(JSONType):
             except AttributeError:
                 pass
             clean_permissions.append(permission)
-        return [self.PERMISSIONS.get(perm, perm)
+        return [cls.PERMISSIONS.get(perm, perm)
                 for perm in clean_permissions]
 
-    def stringify_acl(self, value):
+    @classmethod
+    def stringify_acl(cls, value):
         """ Get valid Pyramid ACL and translate values to strings.
 
         String cleaning and case conversion is also performed here.
@@ -318,9 +316,9 @@ class ACLType(JSONType):
                 string_acl.append(ac_entry)
                 continue
             action, identifier, permissions = ac_entry
-            action = self._stringify_action(action)
-            identifier = self._stringify_identifier(identifier)
-            permissions = self._stringify_permissions(permissions)
+            action = cls._stringify_action(action)
+            identifier = cls._stringify_identifier(identifier)
+            permissions = cls._stringify_permissions(permissions)
             for perm in permissions:
                 string_acl.append({
                     'action': action,
@@ -364,6 +362,13 @@ class ACLType(JSONType):
             object_acl.append([action, identifier, permission])
         return object_acl
 
+
+class ACLType(ACLEncoderMixin, JSONType):
+    """ Subclass of `JSONType` used to store Pyramid ACL.
+
+    ACL is stored as nested list with all Pyramid special actions,
+    identifieds and permissions converted to strings.
+    """
     def process_bind_param(self, value, dialect):
         """ Convert Pyramid ACL objects into string representation,
         validate and store in DB as JSON.

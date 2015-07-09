@@ -19,7 +19,6 @@ from nefertari.utils import (
 
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, IntegerField, ACLField
-from .utils import objectify_acl
 from . import types
 
 
@@ -705,7 +704,7 @@ class BaseDocument(BaseObject, BaseMixin):
     @property
     def __acl__(self):
         """ Convert stored ACL to valid Pyramid ACL. """
-        acl = objectify_acl(self._acl)
+        acl = ACLField.objectify_acl(self._acl)
         log.info('Loaded ACL from database for {}({}): {}'.format(
             self.__class__.__name__,
             getattr(self, self.pk_field()), acl))

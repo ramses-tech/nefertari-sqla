@@ -24,6 +24,7 @@ from .types import (
     Choice,
     ChoiceArray,
     ACLType,
+    ACLEncoderMixin,
 )
 
 
@@ -288,7 +289,7 @@ class DictField(ProcessableMixin, BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class ACLField(ProcessableMixin, BaseField):
+class ACLField(ACLEncoderMixin, ProcessableMixin, BaseField):
     """ Field used to store Pyramid ACLs. """
     _sqla_type_cls = ACLType
     _type_unchanged_kwargs = ()

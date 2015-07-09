@@ -627,15 +627,15 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    @patch('nefertari_sqla.types.ACLType')
-    def test_dunder_acl(self, mock_type, simple_model, memory_db):
+    @patch.object(docs, 'ACLField')
+    def test_dunder_acl(self, mofk_field, simple_model, memory_db):
         memory_db()
-        mock_type.objectify_acl.return_value = [(1, 2, 3)]
+        mofk_field.objectify_acl.return_value = [(1, 2, 3)]
         myobj = simple_model()
         myobj._acl = [('a', 'b', 'c')]
         val = myobj.__acl__
         assert val == [(1, 2, 3)]
-        mock_type.objectify_acl.assert_called_once_with([('a', 'b', 'c')])
+        mofk_field.objectify_acl.assert_called_once_with([('a', 'b', 'c')])
 
     def test_bump_version(self, simple_model, memory_db):
         memory_db()

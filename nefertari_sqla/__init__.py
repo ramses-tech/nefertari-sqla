@@ -11,7 +11,7 @@ from .serializers import JSONEncoder, ESJSONSerializer
 from .signals import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
-    get_relationship_cls, objectify_acl)
+    get_relationship_cls)
 from .fields import (
     BigIntegerField,
     BooleanField,
