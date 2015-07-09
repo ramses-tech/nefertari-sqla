@@ -74,7 +74,7 @@ TYPES_MAP = {
         'type': 'nested',
         'properties': {
             'action': {'type': 'string'},
-            'identifier': {'type': 'string'},
+            'identifier': {'type': 'string', 'index': 'not_analyzed'},
             'permission': {'type': 'string'},
         }
     },
