@@ -122,8 +122,6 @@ class BaseMixin(object):
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
         relationships = {r.key: r for r in mapper.relationships}
-        # Replace field 'id' with primary key field
-        columns['id'] = columns.get(cls.pk_field())
 
         for name, column in columns.items():
             column_type = column.type
@@ -142,6 +140,7 @@ class BaseMixin(object):
                 column_type = TYPES_MAP[rel_pk_field]
             properties[name] = column_type
 
+        properties['_pk'] = {'type': 'string'}
         properties['_type'] = {'type': 'string'}
         return mapping
 
@@ -522,11 +521,10 @@ class BaseMixin(object):
         return items_count
 
     def __repr__(self):
-        parts = []
-
-        if hasattr(self, 'id'):
-            parts.append('id=%s' % self.id)
-
+        pk_field = self.pk_field()
+        parts = [
+            '{}={}'.format(pk_field, getattr(self, pk_field)),
+        ]
         if hasattr(self, '_version'):
             parts.append('v=%s' % self._version)
 
@@ -568,7 +566,7 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.pk_field())
+        _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
     def update_iterables(self, params, attr, unique=False,

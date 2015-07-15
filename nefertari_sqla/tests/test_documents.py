@@ -96,11 +96,11 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'mymodel': {
                 'properties': {
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'settings': {'type': 'object', 'enabled': False},
                     'groups': {'type': 'string'},
-                    'id': {'type': 'string'},
                     'my_id': {'type': 'long'},
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'}
@@ -110,10 +110,10 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'mymodel2': {
                 'properties': {
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},
-                    'id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'myself': {'type': 'object'}
                 }
@@ -410,11 +410,11 @@ class TestBaseMixin(object):
         items.update.assert_called_once_with(
             {'foo': 'bar'}, synchronize_session='fetch')
 
-    def test_repr(self):
-        obj = docs.BaseMixin()
+    def test_repr(self, simple_model, memory_db):
+        obj = simple_model()
         obj.id = 3
         obj._version = 12
-        assert str(obj) == '<BaseMixin: id=3, v=12>'
+        assert str(obj) == '<MyModel: id=3, v=12>'
 
     @patch.object(docs.BaseMixin, 'get_collection')
     def test_get_by_ids(self, mock_coll, memory_db):
@@ -472,9 +472,11 @@ class TestBaseMixin(object):
 
         result = myobj1.to_dict()
         assert list(sorted(result.keys())) == [
-            '_type', '_version', 'id', 'other_obj', 'other_obj2', 'other_obj3']
+            '_pk', '_type', '_version', 'id', 'other_obj',
+            'other_obj2', 'other_obj3']
         assert result['_type'] == 'MyModel'
         assert result['id'] == 1
+        assert result['_pk'] == '1'
         # Not nester one-to-one
         assert result['other_obj'] == 2
         # Not nester many-to-one
