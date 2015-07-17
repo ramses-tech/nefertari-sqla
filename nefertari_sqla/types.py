@@ -2,7 +2,7 @@ import json
 import datetime
 
 from sqlalchemy import types
-from sqlalchemy.dialects.postgresql import ARRAY, HSTORE
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class LengthLimitedStringMixin(object):
