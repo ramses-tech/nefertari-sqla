@@ -247,26 +247,25 @@ class BaseMixin(object):
 
         Arguments:
             :object: Sequence of :cls: instances on which query should be run.
-            :params: Query parameters.
+            :params: Query parameters to filter :objects:.
         """
         id_name = cls.pk_field()
         ids = [getattr(obj, id_name, None) for obj in objects]
         ids = [str(id_) for id_ in ids if id_ is not None]
         field_obj = getattr(cls, id_name)
 
-        session = Session()
-        query_set = session.query(cls).filter(field_obj.in_(ids))
+        query_set = Session().query(cls).filter(field_obj.in_(ids))
 
-        if first:
-            params['_limit'] = 1
-            params['__raise_on_empty'] = True
+        if params:
+            params['_limit'] = len(ids)
             params['query_set'] = query_set.from_self()
             query_set = cls.get_collection(**params)
 
+        if first:
             first_obj = query_set.first()
             if not first_obj:
-                msg = "'{}({}={})' resource not found".format(
-                    cls.__name__, id_name, params[id_name])
+                msg = "'{}({})' resource not found".format(
+                    cls.__name__, params)
                 raise JHTTPNotFound(msg)
             return first_obj
 

@@ -254,23 +254,34 @@ class TestBaseMixin(object):
         assert count == 12345
 
     @patch.object(docs, 'Session')
-    @patch.object(docs.BaseMixin, 'get_collection')
-    def test_filter_objects(
-            self, mock_get, mock_sess, simple_model, memory_db):
+    def test_filter_objects_first(
+            self, mock_sess, simple_model, memory_db):
         memory_db()
-        queryset1 = mock_sess().query().filter()
-        queryset2 = Mock()
-        mock_get.return_value = queryset2
         simple_model.id.in_ = Mock()
-        simple_model.filter_objects([Mock(id=4)], first=True)
+        result = simple_model.filter_objects([Mock(id=4)], first=True)
 
         mock_sess().query.assert_called_with(simple_model)
-        assert mock_sess().query().filter.call_count == 2
-
-        mock_get.assert_called_once_with(
-            _limit=1, __raise_on_empty=True,
-            query_set=queryset1.from_self())
+        assert mock_sess().query().filter.call_count == 1
         simple_model.id.in_.assert_called_once_with(['4'])
+        assert result == mock_sess().query().filter().first()
+
+    @patch.object(docs, 'Session')
+    @patch.object(docs.BaseMixin, 'get_collection')
+    def test_filter_objects_params(
+            self, mock_get, mock_sess, simple_model, memory_db):
+        memory_db()
+        simple_model.id.in_ = Mock()
+        result = simple_model.filter_objects(
+            [Mock(id=4), Mock(id=5)], foo='bar')
+
+        mock_sess().query.assert_called_with(simple_model)
+        assert mock_sess().query().filter.call_count == 1
+        simple_model.id.in_.assert_called_once_with(['4', '5'])
+        query_set = mock_sess().query().filter()
+        mock_get.assert_called_once_with(
+            _limit=2, query_set=query_set.from_self(),
+            foo='bar')
+        assert result == mock_get()
 
     def test_pop_iterables(self, memory_db):
         class MyModel(docs.BaseDocument):

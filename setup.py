@@ -10,13 +10,13 @@ install_requires = [
     'elasticsearch',
     'pyramid_tm',
     'six',
-    'nefertari>=0.4.0'
+    'nefertari>=0.4.1'
 ]
 
 
 setup(
     name='nefertari_sqla',
-    version="0.3.0",
+    version="0.3.1",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",

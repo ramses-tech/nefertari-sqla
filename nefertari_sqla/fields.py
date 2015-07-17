@@ -89,7 +89,7 @@ class BaseField(Column):
         if args:
             col_kw['name'], col_kw['type_'] = args
         # Column init when defining a schema
-        else:
+        elif not col_kw.get('type_'):
             col_kw['type_'] = self._sqla_type_cls(*type_args, **type_kw)
         super(BaseField, self).__init__(**col_kw)
 
