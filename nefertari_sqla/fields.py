@@ -37,6 +37,7 @@ class ProcessableMixin(object):
         :after_validation: Processors that are run after session.flush()
             but before session.commit()
         """
+        self._kwargs_backup = kwargs.copy()
         self.before_validation = kwargs.pop('before_validation', ())
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
@@ -81,13 +82,16 @@ class BaseField(Column):
         * If `args` are provided, that means column proxy is being created.
           In this case Type does not need to be created.
         """
+        if not hasattr(self, '_kwargs_backup'):
+            self._kwargs_backup = kwargs.copy()
+
         type_args, type_kw, cleaned_kw = self.process_type_args(kwargs)
         col_kw = self.process_column_args(cleaned_kw)
         # Column proxy is created by declarative extension
         if args:
             col_kw['name'], col_kw['type_'] = args
         # Column init when defining a schema
-        elif not col_kw.get('type_'):
+        else:
             col_kw['type_'] = self._sqla_type_cls(*type_args, **type_kw)
         super(BaseField, self).__init__(**col_kw)
 
@@ -146,9 +150,16 @@ class BaseField(Column):
         col_kw = self._drop_invalid_kwargs(col_kw)
         return col_kw
 
-    @property
-    def _constructor(self):
-        return self.__class__
+    def _constructor(self, *args, **kwargs):
+        """ Update default Column kwargs with missing kwargs from
+        first init to supports non-standard kwargs.
+        """
+        additional_kw = {
+            key: val for key, val in self._kwargs_backup.items()
+            if not kwargs.get(key)}
+        kwargs.update(additional_kw)
+        return self.__class__(*args, **kwargs)
+
 
 class BigIntegerField(ProcessableMixin, BaseField):
     _sqla_type_cls = LimitedBigInteger
