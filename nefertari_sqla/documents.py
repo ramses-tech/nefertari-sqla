@@ -755,8 +755,10 @@ class BaseDocument(BaseObject, BaseMixin):
             if column is not None and hasattr(column, 'apply_processors'):
                 new_value = getattr(self, name)
                 processed_value = column.apply_processors(
+                    before=before, after=after,
                     instance=self, new_value=new_value,
-                    before=before, after=after)
+                    field=name,
+                )
                 if new_value != processed_value:
                     setattr(self, name, processed_value)
 

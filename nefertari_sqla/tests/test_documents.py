@@ -13,6 +13,14 @@ from .. import fields
 from .fixtures import memory_db, db_session, simple_model
 
 
+def _test_processor_plus(**kwargs):
+    return kwargs['new_value'] + '+'
+
+
+def _test_processor_minus(**kwargs):
+    return kwargs['new_value'] + '-'
+
+
 class TestDocumentHelpers(object):
 
     @patch.object(docs, 'BaseObject')
@@ -692,16 +700,17 @@ class TestBaseDocument(object):
         obj_session().delete.assert_called_once_with(obj)
 
     def test_apply_before_validation_new_object(self, memory_db):
-        processor = lambda instance, new_value: 'foobar'
-        processor2 = lambda instance, new_value: new_value + '+'
+        def _test_processor_foobar(**kwargs):
+            return 'foobar'
 
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(
-                before_validation=[processor],
-                after_validation=[processor2])
-            email = fields.StringField(before_validation=[processor])
+                before_validation=[_test_processor_foobar],
+                after_validation=[_test_processor_plus])
+            email = fields.StringField(before_validation=[
+                _test_processor_foobar])
         memory_db()
 
         obj = MyModel(name='myname')
@@ -710,16 +719,14 @@ class TestBaseDocument(object):
         assert obj.email == 'foobar'
 
     def test_apply_before_validation_existing_object(self, memory_db):
-        processor = lambda instance, new_value: new_value + '-'
-        processor2 = lambda instance, new_value: new_value + '+'
-
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(
-                before_validation=[processor],
-                after_validation=[processor2])
-            email = fields.StringField(before_validation=[processor])
+                before_validation=[_test_processor_minus],
+                after_validation=[_test_processor_plus])
+            email = fields.StringField(before_validation=[
+                _test_processor_minus])
         memory_db()
 
         obj = MyModel(id=1, name='myname', email='FOO').save()
@@ -759,9 +766,8 @@ class TestBaseDocument(object):
             __tablename__ = 'mymodel'
             name = fields.StringField(
                 primary_key=True,
-                before_validation=[lambda instance, new_value: new_value + '-'],
-                after_validation=[
-                    lambda instance, new_value: new_value + '+'])
+                before_validation=[_test_processor_minus],
+                after_validation=[_test_processor_plus])
         memory_db()
         obj = MyModel(name='foo')
 
