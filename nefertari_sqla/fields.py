@@ -361,6 +361,9 @@ class BaseSchemaItemField(BaseField):
         * If `args` are provided, that means column proxy is being created.
           In this case Type does not need to be created.
         """
+        if not hasattr(self, '_kwargs_backup'):
+            self._kwargs_backup = kwargs.copy()
+
         type_args, type_kw, cleaned_kw = self.process_type_args(kwargs)
         if not args:
             schema_item, cleaned_kw = self._generate_schema_item(cleaned_kw)
