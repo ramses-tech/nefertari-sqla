@@ -1,7 +1,5 @@
 import logging
 
-from sqlalchemy.orm.properties import RelationshipProperty as RelationshipField
-
 from zope.dottedname.resolve import resolve
 
 from .documents import (
@@ -36,6 +34,9 @@ from .fields import (
     DictField,
     ListField,
 )
+
+from .fields import ProcessableRelationshipProperty as RelationshipField
+
 
 log = logging.getLogger(__name__)
 
