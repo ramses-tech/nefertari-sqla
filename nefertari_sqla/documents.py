@@ -401,10 +401,17 @@ class BaseMixin(object):
 
     @classmethod
     def native_fields(cls):
-        mapper = class_mapper(cls)
-        columns = [c.name for c in mapper.columns]
-        relationships = [r.key for r in mapper.relationships]
+        columns = list(cls._mapped_columns().keys())
+        relationships = list(cls._mapped_relationships().keys())
         return columns + relationships
+
+    @classmethod
+    def _mapped_columns(cls):
+        return {c.name: c for c in class_mapper(cls).columns}
+
+    @classmethod
+    def _mapped_relationships(cls):
+        return {c.key: c for c in class_mapper(cls).relationships}
 
     @classmethod
     def fields_to_query(cls):
@@ -540,9 +547,8 @@ class BaseMixin(object):
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
         null_values = {}
-        mapper = class_mapper(cls)
-        columns = {c.name: c for c in mapper.columns}
-        columns.update({r.key: r for r in mapper.relationships})
+        columns = cls._mapped_columns()
+        columns.update(cls._mapped_relationships())
         for name, col in columns.items():
             if isinstance(col, RelationshipProperty) and col.uselist:
                 value = []
@@ -745,9 +751,8 @@ class BaseDocument(BaseObject, BaseMixin):
           :after: Boolean indicating whether to apply after_validation
             processors.
         """
-        mapper = class_mapper(self.__class__)
-        columns = {c.key: c for c in mapper.columns}
-        columns.update({r.key: r for r in mapper.relationships})
+        columns = self._mapped_columns()
+        columns.update(self._mapped_relationships())
 
         if column_names is None:
             column_names = columns.keys()
@@ -776,12 +781,13 @@ class BaseDocument(BaseObject, BaseMixin):
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
 
         if state.persistent:
             changed_columns = list(state.committed_state.keys())
         else:  # New object
+            columns = self._mapped_columns()
+            columns.update(self._mapped_relationships())
             changed_columns = list(columns.keys())
 
         changed_columns = sorted(changed_columns)

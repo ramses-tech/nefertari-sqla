@@ -512,6 +512,9 @@ def Relationship(**kwargs):
         kwargs[backref_pre + 'doc'] = kwargs.pop(
             backref_pre + 'help_text', None)
 
+    before_validation = kwargs.pop('before_validation', ())
+    after_validation = kwargs.pop('after_validation', ())
+
     kwargs = {k: v for k, v in kwargs.items()
               if k in relationship_kwargs
               or k[len(backref_pre):] in relationship_kwargs}
@@ -523,12 +526,18 @@ def Relationship(**kwargs):
             backref_kw[key] = val
         else:
             rel_kw[key] = val
+
     rel_document = rel_kw.pop('document')
     if 'uselist' in rel_kw and not rel_kw['uselist']:
         rel_kw['lazy'] = 'immediate'
+
     if backref_kw:
         if not backref_kw.get('uselist'):
             backref_kw['lazy'] = 'immediate'
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
-    return relationship(rel_document, **rel_kw)
+
+    field = relationship(rel_document, **rel_kw)
+    field.before_validation = before_validation
+    field.after_validation = after_validation
+    return field
