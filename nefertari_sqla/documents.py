@@ -130,8 +130,6 @@ class BaseMixin(object):
         mapper = class_mapper(cls)
         columns = {c.name: c for c in mapper.columns}
         relationships = {r.key: r for r in mapper.relationships}
-        # Replace field 'id' with primary key field
-        columns['id'] = columns.get(cls.pk_field())
 
         for name, column in columns.items():
             column_type = column.type
@@ -150,6 +148,7 @@ class BaseMixin(object):
                 column_type = TYPES_MAP[rel_pk_field]
             properties[name] = column_type
 
+        properties['_pk'] = {'type': 'string'}
         properties['_type'] = {'type': 'string'}
         return mapping
 
@@ -472,7 +471,7 @@ class BaseMixin(object):
         return self
 
     @classmethod
-    def _delete_many(cls, items, request_params=None,
+    def _delete_many(cls, items, request=None,
                      synchronize_session=False):
         """ Delete :items: queryset or objects list.
 
@@ -494,20 +493,20 @@ class BaseMixin(object):
                 delete_items = items.all()
                 items.delete(
                     synchronize_session=synchronize_session)
-                on_bulk_delete(cls, delete_items, request_params)
+                on_bulk_delete(cls, delete_items, request)
                 return items_count
             except Exception as ex:
                 log.error(str(ex))
         items_count = len(items)
         session = Session()
         for item in items:
-            item._request_params = request_params
+            item._request = request
             session.delete(item)
         session.flush()
         return items_count
 
     @classmethod
-    def _update_many(cls, items, params, request_params=None,
+    def _update_many(cls, items, params, request=None,
                      synchronize_session='fetch'):
         """ Update :items: queryset or objects list.
 
@@ -519,21 +518,20 @@ class BaseMixin(object):
         a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
-            items._request_params = request_params
+            items._request = request
             items.update(
                 params, synchronize_session=synchronize_session)
             return cls.count(items)
         items_count = len(items)
         for item in items:
-            item.update(params, request_params)
+            item.update(params, request)
         return items_count
 
     def __repr__(self):
-        parts = []
-
-        if hasattr(self, 'id'):
-            parts.append('id=%s' % self.id)
-
+        pk_field = self.pk_field()
+        parts = [
+            '{}={}'.format(pk_field, getattr(self, pk_field)),
+        ]
         if hasattr(self, '_version'):
             parts.append('v=%s' % self._version)
 
@@ -578,13 +576,13 @@ class BaseMixin(object):
             _data[field] = value
         _dict = DataProxy(_data).to_dict(**kwargs)
         _dict['_type'] = self._type
-        _dict['id'] = getattr(self, self.pk_field())
+        _dict['_pk'] = str(getattr(self, self.pk_field()))
         return _dict
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
-                         request_params=None):
-        self._request_params = request_params
+                         request=None):
+        self._request = request
         mapper = class_mapper(self.__class__)
         columns = {c.name: c for c in mapper.columns}
         is_dict = isinstance(columns.get(attr), DictField)
@@ -622,7 +620,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(request_params)
+                self.save(request)
 
         def update_list(update_params):
             final_value = getattr(self, attr, []) or []
@@ -651,7 +649,7 @@ class BaseMixin(object):
 
             setattr(self, attr, final_value)
             if save:
-                self.save(request_params)
+                self.save(request)
 
         if is_dict:
             update_dict(params)
@@ -719,11 +717,11 @@ class BaseDocument(BaseObject, BaseMixin):
         if not state.persistent and self._acl is None:
             self._acl = self.__item_acl__
 
-    def save(self, request_params=None):
+    def save(self, request=None):
         session = object_session(self)
         self._set_default_acl()
         self._bump_version()
-        self._request_params = request_params
+        self._request = request
         session = session or Session()
         try:
             self.apply_before_validation()
@@ -741,8 +739,8 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def update(self, params, request_params=None):
-        self._request_params = request_params
+    def update(self, params, request=None):
+        self._request = request
         try:
             self._update(params)
             self._bump_version()
@@ -761,8 +759,8 @@ class BaseDocument(BaseObject, BaseMixin):
                     self.__class__.__name__),
                 extra={'data': e})
 
-    def delete(self, request_params=None):
-        self._request_params = request_params
+    def delete(self, request=None):
+        self._request = request
         object_session(self).delete(self)
 
     def apply_processors(self, column_names=None, before=False, after=False):
@@ -783,9 +781,14 @@ class BaseDocument(BaseObject, BaseMixin):
             column = columns.get(name)
             if column is not None and hasattr(column, 'apply_processors'):
                 new_value = getattr(self, name)
+                proc_kwargs = {
+                    'new_value': new_value,
+                    'instance': self,
+                    'field': name,
+                    'request': getattr(self, '_request', None),
+                }
                 processed_value = column.apply_processors(
-                    instance=self, new_value=new_value,
-                    before=before, after=after)
+                    before=before, after=after, **proc_kwargs)
                 if new_value != processed_value:
                     setattr(self, name, processed_value)
 

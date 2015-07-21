@@ -13,6 +13,14 @@ from .. import fields
 from .fixtures import memory_db, db_session, simple_model
 
 
+def _test_processor_plus(**kwargs):
+    return kwargs['new_value'] + '+'
+
+
+def _test_processor_minus(**kwargs):
+    return kwargs['new_value'] + '-'
+
+
 class TestDocumentHelpers(object):
 
     @patch.object(docs, 'BaseObject')
@@ -104,11 +112,11 @@ class TestBaseMixin(object):
                             'permission': {'type': 'string'},
                         },
                     },
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'settings': {'type': 'object', 'enabled': False},
                     'groups': {'type': 'string'},
-                    'id': {'type': 'string'},
                     'my_id': {'type': 'long'},
                     'name': {'type': 'string'},
                     'parent': {'type': 'string'}
@@ -126,10 +134,10 @@ class TestBaseMixin(object):
                             'permission': {'type': 'string'},
                         },
                     },
+                    '_pk': {'type': 'string'},
                     '_type': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},
-                    'id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'myself': {'type': 'object'}
                 }
@@ -437,11 +445,11 @@ class TestBaseMixin(object):
         items.update.assert_called_once_with(
             {'foo': 'bar'}, synchronize_session='fetch')
 
-    def test_repr(self):
-        obj = docs.BaseMixin()
+    def test_repr(self, simple_model, memory_db):
+        obj = simple_model()
         obj.id = 3
         obj._version = 12
-        assert str(obj) == '<BaseMixin: id=3, v=12>'
+        assert str(obj) == '<MyModel: id=3, v=12>'
 
     @patch.object(docs.BaseMixin, 'get_collection')
     def test_get_by_ids(self, mock_coll, memory_db):
@@ -497,10 +505,11 @@ class TestBaseMixin(object):
 
         result = myobj1.to_dict()
         assert list(sorted(result.keys())) == [
-            '_acl', '_type', '_version', 'id', 'other_obj', 'other_obj2',
-            'other_obj3']
+            '_acl', '_pk', '_type', '_version', 'id', 'other_obj',
+            'other_obj2', 'other_obj3']
         assert result['_type'] == 'MyModel'
         assert result['id'] == 1
+        assert result['_pk'] == '1'
         # Not nester one-to-one
         assert result['other_obj'] == 2
         # Not nester many-to-one
@@ -731,16 +740,17 @@ class TestBaseDocument(object):
         obj_session().delete.assert_called_once_with(obj)
 
     def test_apply_before_validation_new_object(self, memory_db):
-        processor = lambda instance, new_value: 'foobar'
-        processor2 = lambda instance, new_value: new_value + '+'
+        def _test_processor_foobar(**kwargs):
+            return 'foobar'
 
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(
-                before_validation=[processor],
-                after_validation=[processor2])
-            email = fields.StringField(before_validation=[processor])
+                before_validation=[_test_processor_foobar],
+                after_validation=[_test_processor_plus])
+            email = fields.StringField(before_validation=[
+                _test_processor_foobar])
         memory_db()
 
         obj = MyModel(name='myname')
@@ -749,16 +759,14 @@ class TestBaseDocument(object):
         assert obj.email == 'foobar'
 
     def test_apply_before_validation_existing_object(self, memory_db):
-        processor = lambda instance, new_value: new_value + '-'
-        processor2 = lambda instance, new_value: new_value + '+'
-
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
             id = fields.IdField(primary_key=True)
             name = fields.StringField(
-                before_validation=[processor],
-                after_validation=[processor2])
-            email = fields.StringField(before_validation=[processor])
+                before_validation=[_test_processor_minus],
+                after_validation=[_test_processor_plus])
+            email = fields.StringField(before_validation=[
+                _test_processor_minus])
         memory_db()
 
         obj = MyModel(id=1, name='myname', email='FOO').save()
@@ -798,9 +806,8 @@ class TestBaseDocument(object):
             __tablename__ = 'mymodel'
             name = fields.StringField(
                 primary_key=True,
-                before_validation=[lambda instance, new_value: new_value + '-'],
-                after_validation=[
-                    lambda instance, new_value: new_value + '+'])
+                before_validation=[_test_processor_minus],
+                after_validation=[_test_processor_plus])
         memory_db()
         obj = MyModel(name='foo')
 
