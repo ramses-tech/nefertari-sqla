@@ -26,13 +26,13 @@ from .types import (
 )
 
 
-def apply_column_processors(field_obj, before=False, after=False,
+def apply_column_processors(column_obj, before=False, after=False,
                             **proc_kwargs):
     processors = []
     if before:
-        processors += list(field_obj.before_validation)
+        processors += list(column_obj.before_validation)
     if after:
-        processors += list(field_obj.after_validation)
+        processors += list(column_obj.after_validation)
     for proc in processors:
         processed_value = proc(**proc_kwargs)
         proc_kwargs['new_value'] = processed_value
