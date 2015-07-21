@@ -42,16 +42,16 @@ class ProcessableMixin(object):
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, instance, new_value,
-                         before=False, after=False):
+    def apply_processors(self, before=False, after=False, **proc_kwargs):
         processors = []
         if before:
             processors += list(self.before_validation)
         if after:
             processors += list(self.after_validation)
         for proc in processors:
-            new_value = proc(instance=instance, new_value=new_value)
-        return new_value
+            processed_value = proc(**proc_kwargs)
+            proc_kwargs['new_value'] = processed_value
+        return proc_kwargs['new_value']
 
 
 class BaseField(Column):

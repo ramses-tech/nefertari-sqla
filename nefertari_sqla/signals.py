@@ -21,15 +21,15 @@ def index_object(obj, with_refs=True, **kwargs):
 def on_after_insert(mapper, connection, target):
     # Reload `target` to get access to back references and processed
     # fields values
-    request_params = getattr(target, '_request_params', None)
+    request = getattr(target, '_request', None)
     model_cls = target.__class__
     pk_field = target.pk_field()
     reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
-    index_object(reloaded, request_params=request_params)
+    index_object(reloaded, request=request)
 
 
 def on_after_update(mapper, connection, target):
-    request_params = getattr(target, '_request_params', None)
+    request = getattr(target, '_request', None)
     from .documents import BaseDocument
 
     # Reindex old one-to-one related object
@@ -41,27 +41,27 @@ def on_after_update(mapper, connection, target):
             if not obj_session.is_modified(value):
                 obj_session.expire(value)
             index_object(value, with_refs=False,
-                         request_params=request_params)
+                         request=request)
 
     # Reload `target` to get access to processed fields values
     columns = [c.name for c in class_mapper(target.__class__).columns]
     object_session(target).expire(target, attribute_names=columns)
-    index_object(target, request_params=request_params)
+    index_object(target, request=request)
 
 
 def on_after_delete(mapper, connection, target):
     from nefertari.elasticsearch import ES
-    request_params = getattr(target, '_request_params', None)
+    request = getattr(target, '_request', None)
     model_cls = target.__class__
     es = ES(model_cls.__name__)
     obj_id = getattr(target, model_cls.pk_field())
-    es.delete(obj_id, request_params=request_params)
-    es.index_refs(target, request_params=request_params)
+    es.delete(obj_id, request=request)
+    es.index_refs(target, request=request)
 
 
 def on_bulk_update(update_context):
-    request_params = getattr(
-        update_context.query, '_request_params', None)
+    request = getattr(
+        update_context.query, '_request', None)
     model_cls = update_context.mapper.entity
     if not getattr(model_cls, '_index_enabled', False):
         return
@@ -73,14 +73,14 @@ def on_bulk_update(update_context):
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
     documents = to_dicts(objects)
-    es.index(documents, request_params=request_params)
+    es.index(documents, request=request)
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj, request_params=request_params)
+        es.index_refs(obj, request=request)
 
 
-def on_bulk_delete(model_cls, objects, request_params):
+def on_bulk_delete(model_cls, objects, request):
     if not getattr(model_cls, '_index_enabled', False):
         return
 
@@ -89,11 +89,11 @@ def on_bulk_delete(model_cls, objects, request_params):
 
     from nefertari.elasticsearch import ES
     es = ES(source=model_cls.__name__)
-    es.delete(ids, request_params=request_params)
+    es.delete(ids, request=request)
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj, request_params=request_params)
+        es.index_refs(obj, request=request)
 
 
 def setup_es_signals_for(source_cls):
