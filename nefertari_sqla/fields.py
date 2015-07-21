@@ -26,6 +26,19 @@ from .types import (
 )
 
 
+def apply_column_processors(field_obj, before=False, after=False,
+                            **proc_kwargs):
+    processors = []
+    if before:
+        processors += list(field_obj.before_validation)
+    if after:
+        processors += list(field_obj.after_validation)
+    for proc in processors:
+        processed_value = proc(**proc_kwargs)
+        proc_kwargs['new_value'] = processed_value
+    return proc_kwargs['new_value']
+
+
 class ProcessableMixin(object):
     """ Mixin that allows running callables on a value that
     is being set on a field.
@@ -42,24 +55,14 @@ class ProcessableMixin(object):
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, before=False, after=False, **proc_kwargs):
-        processors = []
-        if before:
-            processors += list(self.before_validation)
-        if after:
-            processors += list(self.after_validation)
-        for proc in processors:
-            processed_value = proc(**proc_kwargs)
-            proc_kwargs['new_value'] = processed_value
-        return proc_kwargs['new_value']
-
 
 class BaseField(Column):
     """ Base plain column that otherwise would be created as
     sqlalchemy.Column(sqlalchemy.Type())
 
     Attributes:
-        _sqla_type_cls: SQLAlchemy type class used to instantiate the column type.
+        _sqla_type_cls: SQLAlchemy type class used to instantiate the column
+            type.
         _type_unchanged_kwargs: sequence of strings that represent arguments
             received by `_sqla_type_cls`, the names of which have not been
             changed. Values of field init arguments with these names will

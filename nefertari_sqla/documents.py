@@ -18,7 +18,8 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import ListField, DictField, IntegerField
+from .fields import (
+    ListField, DictField, IntegerField, apply_column_processors)
 from . import types
 
 
@@ -744,13 +745,16 @@ class BaseDocument(BaseObject, BaseMixin):
           :after: Boolean indicating whether to apply after_validation
             processors.
         """
-        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        mapper = class_mapper(self.__class__)
+        columns = {c.key: c for c in mapper.columns}
+        columns.update({r.key: r for r in mapper.relationships})
+
         if column_names is None:
             column_names = columns.keys()
 
         for name in column_names:
             column = columns.get(name)
-            if column is not None and hasattr(column, 'apply_processors'):
+            if column is not None and hasattr(column, 'before_validation'):
                 new_value = getattr(self, name)
                 proc_kwargs = {
                     'new_value': new_value,
@@ -758,8 +762,9 @@ class BaseDocument(BaseObject, BaseMixin):
                     'field': name,
                     'request': getattr(self, '_request', None),
                 }
-                processed_value = column.apply_processors(
-                    before=before, after=after, **proc_kwargs)
+                processed_value = apply_column_processors(
+                    column, before=before, after=after,
+                    **proc_kwargs)
                 if new_value != processed_value:
                     setattr(self, name, processed_value)
 
