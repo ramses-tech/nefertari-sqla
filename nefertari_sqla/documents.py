@@ -207,6 +207,8 @@ class BaseMixin(object):
                 fields_only = [
                     f for f in fields_only if f not in fields_exclude]
             if fields_only:
+                # Add PK field
+                fields_only.append(cls.pk_field())
                 fields_only = [
                     getattr(cls, f) for f in sorted(set(fields_only))]
                 query_set = query_set.with_entities(*fields_only)
@@ -387,12 +389,37 @@ class BaseMixin(object):
 
         log.debug('get_collection.query_set: %s (%s)', cls.__name__, query_sql)
 
+        if _fields:
+            query_set = cls.add_field_names(query_set, _fields)
+
         query_set._nefertari_meta = dict(
             total=_total,
             start=_start,
             fields=_fields)
-
         return query_set
+
+    @classmethod
+    def add_field_names(cls, query_set, requested_fields):
+        """ Convert list of tuples to dict with proper field keys. """
+        from .utils import FieldsQuerySet
+        fields = [col['name'] for col in query_set.column_descriptions] + [
+            '_type']
+        add_vals = (cls.__name__,)
+        pk_field = cls.pk_field()
+
+        def _convert(val):
+            return dict(zip(fields, val+add_vals))
+
+        def _add_pk(obj):
+            if pk_field in obj:
+                obj['_pk'] = obj[pk_field]
+                if pk_field not in requested_fields:
+                    obj.pop(pk_field)
+            return obj
+
+        values = query_set.all()
+        converted = [_add_pk(_convert(val)) for val in values]
+        return FieldsQuerySet(converted)
 
     @classmethod
     def has_field(cls, field):
