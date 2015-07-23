@@ -1,12 +1,7 @@
 from sqlalchemy.orm.properties import RelationshipProperty
 from sqlalchemy.orm import class_mapper
 
-from .fields import ProcessableRelationshipProperty
-
-relationship_fields = (
-    RelationshipProperty,
-    ProcessableRelationshipProperty,
-)
+relationship_fields = (RelationshipProperty,)
 
 
 def is_relationship_field(field, model_cls):

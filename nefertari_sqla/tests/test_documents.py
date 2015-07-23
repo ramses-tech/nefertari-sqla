@@ -314,22 +314,8 @@ class TestBaseMixin(object):
 
     def test_native_fields(self, simple_model, memory_db):
         memory_db()
-        assert sorted(simple_model.native_fields()) == [
+        assert simple_model.native_fields() == [
             '_version', 'id', 'name']
-
-    def test_mapped_columns(self, simple_model, memory_db):
-        memory_db()
-        cols = simple_model._mapped_columns().keys()
-        assert sorted(cols) == ['_version', 'id', 'name']
-
-    @patch.object(docs, 'class_mapper')
-    def test_mapped_relationships(
-            self, mock_mapper, simple_model, memory_db):
-        memory_db()
-        rels = [Mock(key='foo')]
-        mock_mapper.return_value = Mock(relationships=rels)
-        cols = simple_model._mapped_relationships()
-        assert cols == {'foo': rels[0]}
 
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
