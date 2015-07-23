@@ -1,4 +1,4 @@
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import backref, public_factory, RelationshipProperty
 from sqlalchemy.schema import Column, ForeignKey
 from sqlalchemy_utils.types.json import JSONType
 
@@ -26,6 +26,31 @@ from .types import (
 )
 
 
+def apply_column_processors(column_obj, before=False, after=False,
+                            **proc_kwargs):
+    """ Apply column processors of :column_obj:.
+
+    :param column_obj: Column instance for which processors should be
+        applied.
+    :param before: Boolean indicating whether before_validation processors
+        should be applied.
+    :param after: Boolean indicating whether after_validation processors
+        should be applied.
+    :param proc_kwargs: Dict containing kwargs that should be passed to
+        each processors. Notable one is 'new_value' - new value that was
+        set to column.
+    """
+    processors = []
+    if before:
+        processors += list(column_obj.before_validation)
+    if after:
+        processors += list(column_obj.after_validation)
+    for proc in processors:
+        processed_value = proc(**proc_kwargs)
+        proc_kwargs['new_value'] = processed_value
+    return proc_kwargs['new_value']
+
+
 class ProcessableMixin(object):
     """ Mixin that allows running callables on a value that
     is being set on a field.
@@ -42,24 +67,14 @@ class ProcessableMixin(object):
         self.after_validation = kwargs.pop('after_validation', ())
         super(ProcessableMixin, self).__init__(*args, **kwargs)
 
-    def apply_processors(self, before=False, after=False, **proc_kwargs):
-        processors = []
-        if before:
-            processors += list(self.before_validation)
-        if after:
-            processors += list(self.after_validation)
-        for proc in processors:
-            processed_value = proc(**proc_kwargs)
-            proc_kwargs['new_value'] = processed_value
-        return proc_kwargs['new_value']
-
 
 class BaseField(Column):
     """ Base plain column that otherwise would be created as
     sqlalchemy.Column(sqlalchemy.Type())
 
     Attributes:
-        _sqla_type_cls: SQLAlchemy type class used to instantiate the column type.
+        _sqla_type_cls: SQLAlchemy type class used to instantiate the column
+            type.
         _type_unchanged_kwargs: sequence of strings that represent arguments
             received by `_sqla_type_cls`, the names of which have not been
             changed. Values of field init arguments with these names will
@@ -479,19 +494,72 @@ relationship_kwargs = {
     'innerjoin', 'distinct_target_key', 'doc',
     'active_history', 'cascade_backrefs', 'load_on_pending',
     'strategy_class', '_local_remote_pairs', 'query_class', 'info',
-    'document', 'name'
+    'document', 'name',
+    'before_validation', 'after_validation',
 }
 
 
+class ProcessableRelationshipProperty(RelationshipProperty):
+    """ Custom RelationshipProperty subclass.
+
+    Makes possible to use processors with backref generated
+    RelationshipProperty. This approach is used as there is no
+    other obvious way to reach RelationshipProperty generated for backref.
+
+    Processors are assigned to backref inside `self._generate_backref`
+    method where `before_validation` and `after_validation` attrs
+    of backref RelationshipProperty are set using values of
+    `self.backref_before_validation` and `self.backref_after_validation`
+    respectively.
+
+    The latter two attributes are passed to init inside `Relationship`
+    constructor function.
+    """
+    def __init__(self, *args, **kwargs):
+        self.before_validation = kwargs.pop('before_validation', ())
+        self.after_validation = kwargs.pop('after_validation', ())
+        self.backref_before_validation = kwargs.pop(
+            'backref_before_validation', ())
+        self.backref_after_validation = kwargs.pop(
+            'backref_after_validation', ())
+        super(ProcessableRelationshipProperty, self).__init__(
+            *args, **kwargs)
+
+    def _set_backref_processors(self):
+        """ Actual method that sets processors to backref. """
+        mapper = self.mapper.primary_mapper()
+        rels = {rel.key: rel for rel in mapper.relationships}
+        try:
+            backref_field = rels[self.back_populates]
+        except KeyError:
+            return
+        backref_field.before_validation = self.backref_before_validation
+        backref_field.after_validation = self.backref_after_validation
+
+    def _generate_backref(self, *args, **kwargs):
+        """ Override to call `_set_backref_processors` after super. """
+        data = super(ProcessableRelationshipProperty, self)._generate_backref(
+            *args, **kwargs)
+        self._set_backref_processors()
+        return data
+
+
+""" Custom constructor for subclass of RelationshipProperty -
+ProcessableRelationshipProperty.
+"""
+processable_relationship = public_factory(
+    ProcessableRelationshipProperty, ".orm.relationship")
+
+
 def Relationship(**kwargs):
-    """ Thin wrapper around sqlalchemy.orm.relationship.
+    """ Thin wrapper around processable_relationship.
 
     The goal of this wrapper is to allow passing both relationship and
     backref arguments to a single function.
     Backref arguments should be prefixed with 'backref_'.
     This function splits relationship-specific and backref-specific arguments
     and makes a call like:
-        relationship(..., ..., backref=backref(...))
+        processable_relationship(..., ..., backref=backref(...))
 
     :lazy: setting is set to 'immediate' on the 'One' side of One2One or
     One2Many relationships. This is done both for relationship itself
@@ -503,6 +571,7 @@ def Relationship(**kwargs):
     simple many-to-one references.
     """
     backref_pre = 'backref_'
+    backref_pre_len = len(backref_pre)
     if 'help_text' in kwargs:
         kwargs['doc'] = kwargs.pop('help_text', None)
     if (backref_pre + 'help_text') in kwargs:
@@ -511,21 +580,31 @@ def Relationship(**kwargs):
 
     kwargs = {k: v for k, v in kwargs.items()
               if k in relationship_kwargs
-              or k[len(backref_pre):] in relationship_kwargs}
+              or k[backref_pre_len:] in relationship_kwargs}
     rel_kw, backref_kw = {}, {}
+
+    rel_kw.update({
+        'backref_before_validation': kwargs.pop(
+            backref_pre + 'before_validation', ()),
+        'backref_after_validation': kwargs.pop(
+            backref_pre + 'after_validation', ())
+    })
 
     for key, val in kwargs.items():
         if key.startswith(backref_pre):
-            key = key[len(backref_pre):]
+            key = key[backref_pre_len:]
             backref_kw[key] = val
         else:
             rel_kw[key] = val
+
     rel_document = rel_kw.pop('document')
     if 'uselist' in rel_kw and not rel_kw['uselist']:
         rel_kw['lazy'] = 'immediate'
+
     if backref_kw:
         if not backref_kw.get('uselist'):
             backref_kw['lazy'] = 'immediate'
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
-    return relationship(rel_document, **rel_kw)
+
+    return processable_relationship(rel_document, **rel_kw)
