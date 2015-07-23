@@ -211,7 +211,7 @@ class TestBaseMixin(object):
         _fields = ['title']
         MyModel.apply_fields(query_set, _fields)
         query_set.with_entities.assert_called_once_with(
-            MyModel.title)
+            MyModel.id, MyModel.title)
 
     def test_apply_fields_no_any_fields(self, simple_model, memory_db):
         memory_db()
@@ -295,6 +295,33 @@ class TestBaseMixin(object):
             MyModel._pop_iterables({'settings': 'foo'})
         expected = 'DictField database querying is not supported'
         assert str(ex.value) == expected
+
+    def test_add_field_names_no_pk_requested(
+            self, memory_db, simple_model):
+        from sqlalchemy.orm.query import Query
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        queryset = simple_model.get_collection(_limit=1)
+        queryset = queryset.with_entities(
+            simple_model.name, simple_model.id)
+        assert isinstance(queryset, Query)
+        objects = simple_model.add_field_names(queryset, [])
+        assert objects == [{'_type': 'MyModel', 'name': 'foo', '_pk': 1}]
+
+    def test_add_field_names_pk_requested(
+            self, memory_db, simple_model):
+        from sqlalchemy.orm.query import Query
+        memory_db()
+        simple_model(id=1, name='foo').save()
+        queryset = simple_model.get_collection(_limit=1)
+        queryset = queryset.with_entities(
+            simple_model.name, simple_model.id)
+        assert isinstance(queryset, Query)
+        objects = simple_model.add_field_names(queryset, ['id'])
+        assert objects == [{
+            '_type': 'MyModel', 'name': 'foo', '_pk': 1,
+            'id': 1
+        }]
 
     @patch.object(docs.BaseMixin, 'native_fields')
     def test_has_field(self, mock_fields):
@@ -833,7 +860,7 @@ class TestGetCollection(object):
         memory_db()
         simple_model(id=1, name='foo').save()
         result = simple_model.get_collection(_limit=1, _fields=['name'])
-        assert result.all() == [('foo',)]
+        assert result == [{'_pk': 1, '_type': 'MyModel', 'name': 'foo'}]
 
     def test_offset(self, simple_model, memory_db):
         memory_db()
