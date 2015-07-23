@@ -141,7 +141,6 @@ class BaseMixin(object):
             properties[name] = column_type
 
         properties['_pk'] = {'type': 'string'}
-        properties['_type'] = {'type': 'string'}
         return mapping
 
     @classmethod
