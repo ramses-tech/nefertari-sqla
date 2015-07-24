@@ -18,7 +18,9 @@ from nefertari.utils import (
     DataProxy)
 
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import ListField, DictField, IntegerField, ACLField
+from .fields import (
+    ListField, DictField, IntegerField, ACLField,
+    apply_column_processors)
 from . import types
 
 
@@ -149,7 +151,6 @@ class BaseMixin(object):
             properties[name] = column_type
 
         properties['_pk'] = {'type': 'string'}
-        properties['_type'] = {'type': 'string'}
         return mapping
 
     @classmethod
@@ -215,6 +216,8 @@ class BaseMixin(object):
                 fields_only = [
                     f for f in fields_only if f not in fields_exclude]
             if fields_only:
+                # Add PK field
+                fields_only.append(cls.pk_field())
                 fields_only = [
                     getattr(cls, f) for f in sorted(set(fields_only))]
                 query_set = query_set.with_entities(*fields_only)
@@ -395,12 +398,37 @@ class BaseMixin(object):
 
         log.debug('get_collection.query_set: %s (%s)', cls.__name__, query_sql)
 
+        if _fields:
+            query_set = cls.add_field_names(query_set, _fields)
+
         query_set._nefertari_meta = dict(
             total=_total,
             start=_start,
             fields=_fields)
-
         return query_set
+
+    @classmethod
+    def add_field_names(cls, query_set, requested_fields):
+        """ Convert list of tuples to dict with proper field keys. """
+        from .utils import FieldsQuerySet
+        fields = [col['name'] for col in query_set.column_descriptions] + [
+            '_type']
+        add_vals = (cls.__name__,)
+        pk_field = cls.pk_field()
+
+        def _convert(val):
+            return dict(zip(fields, val+add_vals))
+
+        def _add_pk(obj):
+            if pk_field in obj:
+                obj['_pk'] = obj[pk_field]
+                if pk_field not in requested_fields:
+                    obj.pop(pk_field)
+            return obj
+
+        values = query_set.all()
+        converted = [_add_pk(_convert(val)) for val in values]
+        return FieldsQuerySet(converted)
 
     @classmethod
     def has_field(cls, field):
@@ -408,10 +436,17 @@ class BaseMixin(object):
 
     @classmethod
     def native_fields(cls):
-        mapper = class_mapper(cls)
-        columns = [c.name for c in mapper.columns]
-        relationships = [r.key for r in mapper.relationships]
+        columns = list(cls._mapped_columns().keys())
+        relationships = list(cls._mapped_relationships().keys())
         return columns + relationships
+
+    @classmethod
+    def _mapped_columns(cls):
+        return {c.name: c for c in class_mapper(cls).columns}
+
+    @classmethod
+    def _mapped_relationships(cls):
+        return {c.key: c for c in class_mapper(cls).relationships}
 
     @classmethod
     def fields_to_query(cls):
@@ -548,9 +583,8 @@ class BaseMixin(object):
         """ Get null values of :cls: fields. """
         skip_fields = {'_version', '_acl'}
         null_values = {}
-        mapper = class_mapper(cls)
-        columns = {c.name: c for c in mapper.columns}
-        columns.update({r.key: r for r in mapper.relationships})
+        columns = cls._mapped_columns()
+        columns.update(cls._mapped_relationships())
         for name, col in columns.items():
             if name in skip_fields:
                 continue
@@ -773,13 +807,15 @@ class BaseDocument(BaseObject, BaseMixin):
           :after: Boolean indicating whether to apply after_validation
             processors.
         """
-        columns = {c.key: c for c in class_mapper(self.__class__).columns}
+        columns = self._mapped_columns()
+        columns.update(self._mapped_relationships())
+
         if column_names is None:
             column_names = columns.keys()
 
         for name in column_names:
             column = columns.get(name)
-            if column is not None and hasattr(column, 'apply_processors'):
+            if column is not None and hasattr(column, 'before_validation'):
                 new_value = getattr(self, name)
                 proc_kwargs = {
                     'new_value': new_value,
@@ -787,8 +823,9 @@ class BaseDocument(BaseObject, BaseMixin):
                     'field': name,
                     'request': getattr(self, '_request', None),
                 }
-                processed_value = column.apply_processors(
-                    before=before, after=after, **proc_kwargs)
+                processed_value = apply_column_processors(
+                    column, before=before, after=after,
+                    **proc_kwargs)
                 if new_value != processed_value:
                     setattr(self, name, processed_value)
 
@@ -800,12 +837,13 @@ class BaseDocument(BaseObject, BaseMixin):
         you posted/set them. E.g. if you set time_field='11/22/2000',
         self.time_field will be equal to '11/22/2000' here.
         """
-        columns = {c.key: c for c in class_mapper(self.__class__).columns}
         state = attributes.instance_state(self)
 
         if state.persistent:
             changed_columns = list(state.committed_state.keys())
         else:  # New object
+            columns = self._mapped_columns()
+            columns.update(self._mapped_relationships())
             changed_columns = list(columns.keys())
 
         changed_columns = sorted(changed_columns)
