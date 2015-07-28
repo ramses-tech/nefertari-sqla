@@ -102,7 +102,7 @@ class TestBaseMixin(object):
         memory_db()
 
         assert MyModel.get_es_mapping() == {
-            'MyModel': {
+            'mymodel': {
                 'properties': {
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
@@ -115,7 +115,7 @@ class TestBaseMixin(object):
             }
         }
         assert MyModel2.get_es_mapping() == {
-            'MyModel2': {
+            'mymodel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
