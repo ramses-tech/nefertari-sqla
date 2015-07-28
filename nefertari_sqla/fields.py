@@ -302,7 +302,7 @@ class UnicodeTextField(StringField):
     _sqla_type_cls = LimitedUnicodeText
 
 
-class DictField(BaseField):
+class DictField(ProcessableMixin, BaseField):
     _sqla_type_cls = JSONType
     _type_unchanged_kwargs = ()
 
@@ -313,7 +313,7 @@ class DictField(BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class ListField(BaseField):
+class ListField(ProcessableMixin, BaseField):
     _sqla_type_cls = ChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')
