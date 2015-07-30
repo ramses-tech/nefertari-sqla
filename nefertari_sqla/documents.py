@@ -313,6 +313,7 @@ class BaseMixin(object):
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
         __strict = params.pop('__strict', True)
+        _item_request = params.pop('_item_request', False)
 
         _sort = _split(params.pop('_sort', []))
         _fields = _split(params.pop('_fields', []))
@@ -382,9 +383,12 @@ class BaseMixin(object):
                     log.debug(msg)
 
         except DataError as ex:
-            msg = "'{}({})' resource not found".format(
-                cls.__name__, params)
-            raise JHTTPNotFound(msg, explanation=ex.message)
+            if _item_request:
+                msg = "'{}({})' resource not found".format(
+                    cls.__name__, params)
+                raise JHTTPNotFound(msg, explanation=ex.message)
+            else:
+                raise ex
         except (InvalidRequestError,) as e:
             raise JHTTPBadRequest(str(e), extra={'data': e})
 
@@ -454,6 +458,7 @@ class BaseMixin(object):
     def get_resource(cls, **params):
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
+        params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
 
