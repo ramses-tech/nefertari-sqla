@@ -5,7 +5,8 @@ import six
 from sqlalchemy.orm import (
     class_mapper, object_session, properties, attributes)
 from sqlalchemy.orm.collections import InstrumentedList
-from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from sqlalchemy.exc import (
+    InvalidRequestError, IntegrityError, DataError)
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
@@ -380,6 +381,10 @@ class BaseMixin(object):
                 else:
                     log.debug(msg)
 
+        except DataError as ex:
+            msg = "'{}({})' resource not found".format(
+                cls.__name__, params)
+            raise JHTTPNotFound(msg, explanation=ex.message)
         except (InvalidRequestError,) as e:
             raise JHTTPBadRequest(str(e), extra={'data': e})
 
