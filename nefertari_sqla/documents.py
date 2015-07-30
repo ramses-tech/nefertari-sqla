@@ -388,9 +388,9 @@ class BaseMixin(object):
                     cls.__name__, params)
                 raise JHTTPNotFound(msg, explanation=ex.message)
             else:
-                raise ex
-        except (InvalidRequestError,) as e:
-            raise JHTTPBadRequest(str(e), extra={'data': e})
+                raise JHTTPBadRequest(str(ex), extra={'data': ex})
+        except (InvalidRequestError,) as ex:
+            raise JHTTPBadRequest(str(ex), extra={'data': ex})
 
         query_sql = str(query_set).replace('\n', '')
         if _explain:
