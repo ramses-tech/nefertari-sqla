@@ -333,7 +333,8 @@ class TestBaseMixin(object):
         mock_get_coll.return_value = queryset
         resource = docs.BaseMixin.get_resource(foo='bar')
         mock_get_coll.assert_called_once_with(
-            __raise_on_empty=True, _limit=1, foo='bar')
+            __raise_on_empty=True, _limit=1, foo='bar',
+            _item_request=True)
         mock_get_coll().first.assert_called_once_with()
         assert resource == mock_get_coll().first()
 

@@ -28,7 +28,7 @@ class JSONEncoder(JSONEncoderMixin, _JSONEncoder):
         if hasattr(obj, 'to_dict'):
             # If it got to this point, it means its a nested object.
             # Outter objects would have been handled with DataProxy.
-            return obj.to_dict(__nested=True)
+            return obj.to_dict()
         return super(JSONEncoder, self).default(obj)
 
 
