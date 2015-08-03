@@ -12,15 +12,16 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 from sqlalchemy_utils.types.json import JSONType
-
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy)
+
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import (
-    ListField, DictField, IntegerField, apply_column_processors)
+    ListField, DictField, IntegerField, ACLField,
+    apply_column_processors)
 from . import types
 
 
@@ -72,6 +73,14 @@ TYPES_MAP = {
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
     types.Choice: {'type': 'string'},
+    types.ACLType: {
+        'type': 'nested',
+        'properties': {
+            'action': {'type': 'string'},
+            'identifier': {'type': 'string', 'index': 'not_analyzed'},
+            'permission': {'type': 'string'},
+        }
+    },
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
@@ -582,10 +591,13 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
+        skip_fields = {'_version', '_acl'}
         null_values = {}
         columns = cls._mapped_columns()
         columns.update(cls._mapped_relationships())
         for name, col in columns.items():
+            if name in skip_fields:
+                continue
             if isinstance(col, RelationshipProperty) and col.uselist:
                 value = []
             else:
@@ -725,15 +737,33 @@ class BaseDocument(BaseObject, BaseMixin):
     should be abstract as well (__abstract__ = True).
     """
     __abstract__ = True
+    __item_acl__ = None
 
     _version = IntegerField(default=0)
+    _acl = ACLField()
+
+    @property
+    def __acl__(self):
+        """ Convert stored ACL to valid Pyramid ACL. """
+        acl = ACLField.objectify_acl(self._acl)
+        log.info('Loaded ACL from database for {}({}): {}'.format(
+            self.__class__.__name__,
+            getattr(self, self.pk_field()), acl))
+        return acl
 
     def _bump_version(self):
         if self._is_modified():
             self._version = (self._version or 0) + 1
 
+    def _set_default_acl(self):
+        """ Set default object ACL if not already set. """
+        state = attributes.instance_state(self)
+        if not state.persistent and self._acl is None:
+            self._acl = self.__item_acl__
+
     def save(self, request=None):
         session = object_session(self)
+        self._set_default_acl()
         self._bump_version()
         self._request = request
         session = session or Session()

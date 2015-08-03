@@ -33,6 +33,7 @@ from .fields import (
     ForeignKeyField,
     DictField,
     ListField,
+    ACLField,
 )
 
 from .fields import ProcessableRelationshipProperty as RelationshipField
