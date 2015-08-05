@@ -5,7 +5,8 @@ import six
 from sqlalchemy.orm import (
     class_mapper, object_session, properties, attributes)
 from sqlalchemy.orm.collections import InstrumentedList
-from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from sqlalchemy.exc import (
+    InvalidRequestError, IntegrityError, DataError)
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
@@ -321,6 +322,7 @@ class BaseMixin(object):
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
         __strict = params.pop('__strict', True)
+        _item_request = params.pop('_item_request', False)
 
         _sort = _split(params.pop('_sort', []))
         _fields = _split(params.pop('_fields', []))
@@ -389,8 +391,15 @@ class BaseMixin(object):
                 else:
                     log.debug(msg)
 
-        except (InvalidRequestError,) as e:
-            raise JHTTPBadRequest(str(e), extra={'data': e})
+        except DataError as ex:
+            if _item_request:
+                msg = "'{}({})' resource not found".format(
+                    cls.__name__, params)
+                raise JHTTPNotFound(msg, explanation=ex.message)
+            else:
+                raise JHTTPBadRequest(str(ex), extra={'data': ex})
+        except (InvalidRequestError,) as ex:
+            raise JHTTPBadRequest(str(ex), extra={'data': ex})
 
         query_sql = str(query_set).replace('\n', '')
         if _explain:
@@ -458,6 +467,7 @@ class BaseMixin(object):
     def get_resource(cls, **params):
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
+        params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
 
