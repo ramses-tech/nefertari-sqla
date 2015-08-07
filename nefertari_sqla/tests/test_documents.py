@@ -443,31 +443,41 @@ class TestBaseMixin(object):
         mock_session().flush.assert_called_once_with()
 
     @patch.object(docs, 'on_bulk_delete')
-    def test_underscore_delete_many_query(self, mock_on_bulk):
+    @patch.object(docs.BaseMixin, '_clean_queryset')
+    def test_underscore_delete_many_query(
+            self, mock_clean, mock_on_bulk):
         from sqlalchemy.orm.query import Query
         items = Query('asd')
-        items.count = Mock(return_value=4)
-        items.all = Mock(return_value=[1, 2, 3])
-        items.delete = Mock()
-        assert docs.BaseMixin._delete_many(items) == 4
-        items.delete.assert_called_once_with(
+        clean_items = Query("ASD")
+        clean_items.all = Mock(return_value=[1, 2, 3])
+        clean_items.delete = Mock()
+        mock_clean.return_value = clean_items
+        count = docs.BaseMixin._delete_many(items)
+        mock_clean.assert_called_once_with(items)
+        clean_items.delete.assert_called_once_with(
             synchronize_session=False)
         mock_on_bulk.assert_called_once_with(
             docs.BaseMixin, [1, 2, 3], None)
+        assert count == clean_items.delete()
 
     def test_underscore_update_many(self):
         item = Mock()
         assert docs.BaseMixin._update_many([item], {'foo': 'bar'}) == 1
         item.update.assert_called_once_with({'foo': 'bar'}, None)
 
-    def test_underscore_update_many_query(self):
+    @patch.object(docs.BaseMixin, '_clean_queryset')
+    def test_underscore_update_many_query(self, mock_clean):
         from sqlalchemy.orm.query import Query
         items = Query('asd')
-        items.update = Mock()
-        items.count = Mock(return_value=4)
-        assert docs.BaseMixin._update_many(items, {'foo': 'bar'}) == 4
-        items.update.assert_called_once_with(
+        clean_items = Query("ASD")
+        clean_items.all = Mock(return_value=[1, 2, 3])
+        clean_items.update = Mock()
+        mock_clean.return_value = clean_items
+        count = docs.BaseMixin._update_many(items, {'foo': 'bar'})
+        mock_clean.assert_called_once_with(items)
+        clean_items.update.assert_called_once_with(
             {'foo': 'bar'}, synchronize_session='fetch')
+        assert count == clean_items.update()
 
     def test_repr(self, simple_model, memory_db):
         obj = simple_model()

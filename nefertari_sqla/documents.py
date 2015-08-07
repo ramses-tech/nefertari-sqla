@@ -511,9 +511,9 @@ class BaseMixin(object):
                      synchronize_session=False):
         """ Delete :items: queryset or objects list.
 
-        When queryset passed, Query.delete() is used to delete it. Note that
-        queryset may not have limit(), offset(), order_by(), group_by(), or
-        distinct() called on it.
+        When queryset passed, Query.delete() is used to delete it but
+        first queryset is re-queried to clean it from explicit
+        limit/offset/etc.
 
         If some of the methods listed above were called, or :items: is not
         a Query instance, one-by-one items update is performed.
@@ -524,15 +524,12 @@ class BaseMixin(object):
         'after_bulk_delete' ORM event.
         """
         if isinstance(items, Query):
-            items_count = cls.count(items)
-            try:
-                delete_items = items.all()
-                items.delete(
-                    synchronize_session=synchronize_session)
-                on_bulk_delete(cls, delete_items, request)
-                return items_count
-            except Exception as ex:
-                log.error(str(ex))
+            del_queryset = cls._clean_queryset(items)
+            del_items = del_queryset.all()
+            del_count = del_queryset.delete(
+                synchronize_session=synchronize_session)
+            on_bulk_delete(cls, del_items, request)
+            return del_count
         items_count = len(items)
         session = Session()
         for item in items:
@@ -546,22 +543,35 @@ class BaseMixin(object):
                      synchronize_session='fetch'):
         """ Update :items: queryset or objects list.
 
-        When queryset passed, Query.update() is used to update it. Note that
-        queryset may not have limit(), offset(), order_by(), group_by(), or
-        distinct() called on it.
+        When queryset passed, Query.update() is used to update it but
+        first queryset is re-queried to clean it from explicit
+        limit/offset/etc.
 
         If some of the methods listed above were called, or :items: is not
         a Query instance, one-by-one items update is performed.
         """
         if isinstance(items, Query):
-            items._request = request
-            items.update(
+            upd_queryset = cls._clean_queryset(items)
+            upd_queryset._request = request
+            upd_count = upd_queryset.update(
                 params, synchronize_session=synchronize_session)
-            return cls.count(items)
+            return upd_count
         items_count = len(items)
         for item in items:
             item.update(params, request)
         return items_count
+
+    @classmethod
+    def _clean_queryset(cls, queryset):
+        """ Clean :queryset: from explicit limit, offset, etc.
+
+        New queryset is created by querying collection by IDs from
+        passed queryset.
+        """
+        pk_field = getattr(cls, cls.pk_field())
+        pks_query = queryset.with_entities(pk_field)
+        return queryset.session.query(cls).filter(
+            pk_field.in_(pks_query))
 
     def __repr__(self):
         pk_field = self.pk_field()
