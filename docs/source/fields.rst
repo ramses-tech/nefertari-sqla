@@ -100,3 +100,13 @@ Fields
     :members:
     :special-members:
     :private-members:
+
+.. autoclass:: nefertari_sqla.fields.DictField
+    :members:
+    :special-members:
+    :private-members:
+
+.. autoclass:: nefertari_sqla.fields.ListField
+    :members:
+    :special-members:
+    :private-members:

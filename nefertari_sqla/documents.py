@@ -239,9 +239,8 @@ class BaseMixin(object):
     def filter_objects(cls, objects, first=False, **params):
         """ Perform query with :params: on instances sequence :objects:
 
-        Arguments:
-            :object: Sequence of :cls: instances on which query should be run.
-            :params: Query parameters to filter :objects:.
+        :param object: Sequence of :cls: instances on which query should be run.
+        :param params: Query parameters to filter :objects:.
         """
         id_name = cls.pk_field()
         ids = [getattr(obj, id_name, None) for obj in objects]
