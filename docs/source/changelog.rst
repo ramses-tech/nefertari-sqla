@@ -1,6 +1,11 @@
 Changelog
 =========
 
+* :release:`0.3.2 <2015-08-19>`
+* :bug:`-` Fixed a bug whereby objects could not be deleted from within processors
+* :bug:`-` Fixed a bug with _update_many() and _delete_many() not working with querysets returned by get_collection()
+* :bug:`-` Fixed a bug with BaseMixin.filter_objects() not correctly applying additional filters passed to it
+
 * :release:`0.3.1 <2015-07-07>`
 * :bug:`-` Fixed bug with Elasticsearch re-indexing of nested relationships
 * :bug:`-` Removed 'updated_at' field from engine
