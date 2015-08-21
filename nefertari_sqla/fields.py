@@ -108,6 +108,8 @@ class BaseField(Column):
         # Column init when defining a schema
         else:
             col_kw['type_'] = self._sqla_type_cls(*type_args, **type_kw)
+            if 'type_' not in kwargs:
+                self._init_kwargs = self._kwargs_backup.copy()
         super(BaseField, self).__init__(**col_kw)
 
     def __setattr__(self, key, value):
@@ -173,7 +175,9 @@ class BaseField(Column):
             key: val for key, val in self._kwargs_backup.items()
             if not kwargs.get(key)}
         kwargs.update(additional_kw)
-        return self.__class__(*args, **kwargs)
+        obj = self.__class__(*args, **kwargs)
+        obj._init_kwargs = self._init_kwargs
+        return obj
 
 
 class BigIntegerField(ProcessableMixin, BaseField):
@@ -389,6 +393,8 @@ class BaseSchemaItemField(BaseField):
         # Column init when defining a schema
         else:
             column_kw['type_'] = self._sqla_type_cls(*type_args, **type_kw)
+            if 'type_' not in kwargs:
+                self._init_kwargs = self._kwargs_backup.copy()
         column_args = (schema_item,)
         return Column.__init__(self, *column_args, **column_kw)
 
@@ -570,6 +576,7 @@ def Relationship(**kwargs):
     are loaded, using a separate SELECT statement, or identity map fetch for
     simple many-to-one references.
     """
+    _init_kwargs = kwargs.copy()
     backref_pre = 'backref_'
     backref_pre_len = len(backref_pre)
     if 'help_text' in kwargs:
@@ -607,4 +614,6 @@ def Relationship(**kwargs):
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
 
-    return processable_relationship(rel_document, **rel_kw)
+    rel_field = processable_relationship(rel_document, **rel_kw)
+    rel_field._init_kwargs = _init_kwargs
+    return rel_field

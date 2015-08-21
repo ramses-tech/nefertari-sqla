@@ -22,6 +22,7 @@ from .signals import ESMetaclass, on_bulk_delete
 from .fields import (
     ListField, DictField, IntegerField, apply_column_processors)
 from . import types
+from .utils import FieldData
 
 
 log = logging.getLogger(__name__)
@@ -806,10 +807,14 @@ class BaseDocument(BaseObject, BaseMixin):
             column = columns.get(name)
             if column is not None and hasattr(column, 'before_validation'):
                 new_value = getattr(self, name)
+                field = FieldData(
+                    name=name,
+                    params=getattr(column, '_init_kwargs', None),
+                )
                 proc_kwargs = {
                     'new_value': new_value,
                     'instance': self,
-                    'field': name,
+                    'field': field,
                     'request': getattr(self, '_request', None),
                 }
                 processed_value = apply_column_processors(

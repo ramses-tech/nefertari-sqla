@@ -36,3 +36,12 @@ def get_relationship_cls(field, model_cls):
 
 class FieldsQuerySet(list):
     pass
+
+
+class FieldData(object):
+    def __init__(self, name, params=None):
+        self.name = name
+        self.params = params
+
+    def __repr__(self):
+        return '<FieldData: {}>'.format(self.name)
