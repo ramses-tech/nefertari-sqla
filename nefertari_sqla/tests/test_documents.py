@@ -710,15 +710,15 @@ class TestBaseDocument(object):
         assert myobj._version == 1
 
     def test_set_default_acl(self, simple_model, memory_db):
-        simple_model.__item_acl__ = [(1, 2, 3)]
+        simple_model.__item_acl__ = ((1, 2, 3),)
         obj = simple_model()
         assert obj._acl is None
         obj._set_default_acl()
-        assert obj._acl == [(1, 2, 3)]
+        assert obj._acl == ((1, 2, 3),)
 
     def test_set_default_acl_already_present(
             self, simple_model, memory_db):
-        simple_model.__item_acl__ = [(1, 2, 3)]
+        simple_model.__item_acl__ = ((1, 2, 3),)
         obj = simple_model()
         obj._acl = [('a', 'b', 'c')]
         obj._set_default_acl()
