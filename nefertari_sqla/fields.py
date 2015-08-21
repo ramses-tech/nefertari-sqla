@@ -541,6 +541,12 @@ class ProcessableRelationshipProperty(RelationshipProperty):
             return
         backref_field.before_validation = self.backref_before_validation
         backref_field.after_validation = self.backref_after_validation
+        backref_field._init_kwargs = {
+            'before_validation': backref_field.before_validation,
+            'after_validation': backref_field.after_validation,
+        }
+        if isinstance(self.backref, tuple):
+            backref_field._init_kwargs.update(self.backref[1])
 
     def _generate_backref(self, *args, **kwargs):
         """ Override to call `_set_backref_processors` after super. """
