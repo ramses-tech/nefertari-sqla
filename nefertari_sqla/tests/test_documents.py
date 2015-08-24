@@ -269,7 +269,7 @@ class TestBaseMixin(object):
         simple_model.id.in_.assert_called_once_with(['4', '5'])
         query_set = mock_sess().query().filter()
         mock_get.assert_called_once_with(
-            _limit=2, query_set=query_set.from_self(),
+            query_set=query_set.from_self(),
             foo='bar')
         assert result == mock_get()
 
@@ -938,8 +938,3 @@ class TestGetCollection(object):
         assert queryset._nefertari_meta['total'] == 1
         assert queryset._nefertari_meta['start'] == 0
         assert queryset._nefertari_meta['fields'] == []
-
-    def test_no_limit(self, simple_model, memory_db):
-        memory_db()
-        with pytest.raises(JHTTPBadRequest):
-            simple_model.get_collection()
