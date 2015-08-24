@@ -555,6 +555,19 @@ class TestBaseMixin(object):
         assert result['other_obj3']['_type'] == 'MyModel'
         assert result['other_obj3']['id'] == 4
 
+    def test_to_dict_depth(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            _nested_relationships = ['other_obj']
+            id = fields.IdField(primary_key=True)
+            other_obj = fields.StringField()
+        memory_db()
+        myobj1 = MyModel(id=1)
+        myobj1.other_obj = MyModel(id=2)
+
+        result = myobj1.to_dict(__depth=0)
+        assert result['other_obj'] == 2
+
     @patch.object(docs, 'object_session')
     def test_update_iterables_dict(self, obj_session, memory_db):
         class MyModel(docs.BaseDocument):

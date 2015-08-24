@@ -604,11 +604,13 @@ class BaseMixin(object):
 
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
+        __depth = kwargs.get('__depth')
+        depth_reached = __depth is not None and __depth <= 0
         _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
             include = field in self._nested_relationships
-            if not include:
+            if not include or depth_reached:
                 get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
