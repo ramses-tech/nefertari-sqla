@@ -931,6 +931,20 @@ class TestGetCollection(object):
         except JHTTPNotFound:
             raise Exception('Unexpected JHTTPNotFound exception')
 
+    @patch.object(docs, 'drop_reserved_params')
+    @patch.object(docs.BaseMixin, 'check_fields_allowed')
+    def test_reserved_params_dropped(
+            self, mock_check, mock_drop, simple_model, memory_db):
+        from nefertari.utils import dictset
+        memory_db()
+        mock_drop.side_effect = lambda x: dictset({'name': 'a'})
+        try:
+            simple_model.get_collection(_limit=1, __strict=True)
+        except JHTTPBadRequest:
+            raise Exception('Unexpected JHTTPBadRequest exception')
+        mock_drop.assert_called_once_with({})
+        mock_check.assert_called_once_with(['name'])
+
     def test_queryset_metadata(self, simple_model, memory_db):
         memory_db()
         simple_model(id=1, name='foo').save()
