@@ -9,7 +9,7 @@ from .serializers import JSONEncoder, ESJSONSerializer
 from .signals import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
-    get_relationship_cls)
+    get_relationship_cls, FieldData)
 from .fields import (
     BigIntegerField,
     BooleanField,
