@@ -657,6 +657,7 @@ class TestBaseMixin(object):
 
         memory_db()
 
+        # Item
         parent = Parent(id=1)
         child = Child(id=1, parent=parent)
         result = [v for v in child.get_related_documents()]
@@ -664,11 +665,24 @@ class TestBaseMixin(object):
         assert result[0][0] is Parent
         assert result[0][1] == [parent]
 
+        # Collection
         assert child in parent.children
         result = [v for v in parent.get_related_documents()]
         assert len(result) == 1
         assert result[0][0] is Child
         assert result[0][1] == [child]
+
+        # nested_only=True for nested object
+        Child._nested_relationships = ('parent',)
+        result = [v for v in parent.get_related_documents(nested_only=True)]
+        assert len(result) == 1
+        assert result[0][0] is Child
+        assert result[0][1] == [child]
+
+        # nested_only=True for NOT nested object
+        Parent._nested_relationships = ()
+        result = [v for v in child.get_related_documents(nested_only=True)]
+        assert len(result) == 0
 
     def test_is_modified_id_not_persistent(self, memory_db, simple_model):
         memory_db()
