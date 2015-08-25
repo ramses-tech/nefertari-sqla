@@ -46,7 +46,7 @@ def on_after_update(mapper, connection, target):
     # Reload `target` to get access to processed fields values
     columns = [c.name for c in class_mapper(target.__class__).columns]
     object_session(target).expire(target, attribute_names=columns)
-    index_object(target, request=request)
+    index_object(target, request=request, nested_only=True)
 
 
 def on_after_delete(mapper, connection, target):
@@ -77,7 +77,7 @@ def on_bulk_update(update_context):
 
     # Reindex relationships
     for obj in objects:
-        es.index_relations(obj, request=request)
+        es.index_relations(obj, request=request, nested_only=True)
 
 
 def on_bulk_delete(model_cls, objects, request):

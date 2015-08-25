@@ -699,7 +699,17 @@ class BaseMixin(object):
         elif is_list:
             update_list(params)
 
-    def get_related_documents(self):
+    def get_related_documents(self, nested_only=False):
+        """ Return pairs of (Model, istances) of relationship fields.
+
+        Pair contains of two elements:
+          :Model: Model class object(s) contained in field.
+          :instances: Model class instance(s) contained in field
+
+        :param nested_only: Boolean, defaults to False. When True, return
+            results only contain data for models on which current model
+            and field are nested.
+        """
         iter_props = class_mapper(self.__class__).iterate_properties
         backref_props = [p for p in iter_props
                          if isinstance(p, properties.RelationshipProperty)]
@@ -712,6 +722,12 @@ class BaseMixin(object):
             if not isinstance(value, list):
                 value = [value]
             model_cls = value[0].__class__
+
+            if nested_only:
+                backref = prop.back_populates
+                if backref and backref not in model_cls._nested_relationships:
+                    continue
+
             yield (model_cls, value)
 
     def _is_modified(self):
