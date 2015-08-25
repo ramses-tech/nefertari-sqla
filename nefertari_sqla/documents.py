@@ -700,7 +700,6 @@ class BaseMixin(object):
             update_list(params)
 
     def get_reference_documents(self):
-        # TODO: Make lazy load of documents
         iter_props = class_mapper(self.__class__).iterate_properties
         backref_props = [p for p in iter_props
                          if isinstance(p, properties.RelationshipProperty)]
