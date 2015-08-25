@@ -718,7 +718,7 @@ class BaseMixin(object):
             value = getattr(self, prop.key)
             # Do not index empty values
             if not value:
-                return
+                continue
             if not isinstance(value, list):
                 value = [value]
             model_cls = value[0].__class__
