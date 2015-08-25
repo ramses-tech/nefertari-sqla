@@ -640,7 +640,7 @@ class TestBaseMixin(object):
         myobj.update_iterables("", attr='settings', unique=False)
         assert myobj.settings == []
 
-    def test_get_reference_documents(self, memory_db):
+    def test_get_related_documents(self, memory_db):
 
         class Child(docs.BaseDocument):
             __tablename__ = 'child'
@@ -659,15 +659,16 @@ class TestBaseMixin(object):
 
         parent = Parent(id=1)
         child = Child(id=1, parent=parent)
-        result = [v for v in child.get_reference_documents()]
+        result = [v for v in child.get_related_documents()]
         assert len(result) == 1
         assert result[0][0] is Parent
         assert result[0][1] == [parent.to_dict()]
 
-        # 'Many' side of relationship values are not returned
         assert child in parent.children
-        result = [v for v in parent.get_reference_documents()]
-        assert len(result) == 0
+        result = [v for v in parent.get_related_documents()]
+        assert len(result) == 1
+        assert result[0][0] is Child
+        assert result[0][1] == [child.to_dict()]
 
     def test_is_modified_id_not_persistent(self, memory_db, simple_model):
         memory_db()

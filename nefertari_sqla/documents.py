@@ -699,18 +699,19 @@ class BaseMixin(object):
         elif is_list:
             update_list(params)
 
-    def get_reference_documents(self):
+    def get_related_documents(self):
         iter_props = class_mapper(self.__class__).iterate_properties
         backref_props = [p for p in iter_props
                          if isinstance(p, properties.RelationshipProperty)]
         for prop in backref_props:
             value = getattr(self, prop.key)
-            # Do not index empty values and 'Many' side in OneToMany,
-            # when 'One' side is indexed.
-            # If 'Many' side should be indexed, its value is already a list.
-            if value is None or isinstance(value, list):
-                continue
-            yield (value.__class__, [value.to_dict()])
+            # Do not index empty values
+            if value:
+                if not isinstance(value, list):
+                    value = [value]
+                value_type = value[0].__class__
+                documents = [val.to_dict() for val in value]
+                yield (value_type, documents)
 
     def _is_modified(self):
         """ Determine if instance is modified.
