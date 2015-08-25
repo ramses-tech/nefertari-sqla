@@ -703,15 +703,16 @@ class BaseMixin(object):
         iter_props = class_mapper(self.__class__).iterate_properties
         backref_props = [p for p in iter_props
                          if isinstance(p, properties.RelationshipProperty)]
+
         for prop in backref_props:
             value = getattr(self, prop.key)
             # Do not index empty values
-            if value:
-                if not isinstance(value, list):
-                    value = [value]
-                value_type = value[0].__class__
-                documents = [val.to_dict() for val in value]
-                yield (value_type, documents)
+            if not value:
+                return
+            if not isinstance(value, list):
+                value = [value]
+            model_cls = value[0].__class__
+            yield (model_cls, value)
 
     def _is_modified(self):
         """ Determine if instance is modified.

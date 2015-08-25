@@ -662,13 +662,13 @@ class TestBaseMixin(object):
         result = [v for v in child.get_related_documents()]
         assert len(result) == 1
         assert result[0][0] is Parent
-        assert result[0][1] == [parent.to_dict()]
+        assert result[0][1] == [parent]
 
         assert child in parent.children
         result = [v for v in parent.get_related_documents()]
         assert len(result) == 1
         assert result[0][0] is Child
-        assert result[0][1] == [child.to_dict()]
+        assert result[0][1] == [child]
 
     def test_is_modified_id_not_persistent(self, memory_db, simple_model):
         memory_db()
