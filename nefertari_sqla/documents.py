@@ -788,6 +788,14 @@ class BaseDocument(BaseObject, BaseMixin):
         self._request = request
         object_session(self).delete(self)
 
+    @classmethod
+    def get_field_params(cls, field_name):
+        """ Get init params of column named :field_name:. """
+        columns = cls._mapped_columns()
+        columns.update(cls._mapped_relationships())
+        column = columns.get(field_name)
+        return getattr(column, '_init_kwargs', None)
+
     def apply_processors(self, column_names=None, before=False, after=False):
         """ Apply processors to columns with :column_names: names.
 
