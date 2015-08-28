@@ -752,8 +752,7 @@ class BaseDocument(BaseObject, BaseMixin):
     _version = IntegerField(default=0)
     _acl = ACLField()
 
-    @property
-    def __acl__(self):
+    def get_acl(self):
         """ Convert stored ACL to valid Pyramid ACL. """
         acl = ACLField.objectify_acl(self._acl)
         log.info('Loaded ACL from database for {}({}): {}'.format(

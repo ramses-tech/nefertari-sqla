@@ -698,12 +698,12 @@ class TestBaseMixin(object):
 class TestBaseDocument(object):
 
     @patch.object(docs, 'ACLField')
-    def test_dunder_acl(self, mofk_field, simple_model, memory_db):
+    def test_get_acl(self, mofk_field, simple_model, memory_db):
         memory_db()
         mofk_field.objectify_acl.return_value = [(1, 2, 3)]
         myobj = simple_model()
         myobj._acl = [('a', 'b', 'c')]
-        val = myobj.__acl__
+        val = myobj.get_acl()
         assert val == [(1, 2, 3)]
         mofk_field.objectify_acl.assert_called_once_with([('a', 'b', 'c')])
 
