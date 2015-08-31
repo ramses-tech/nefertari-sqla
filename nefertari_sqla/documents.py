@@ -12,6 +12,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.properties import RelationshipProperty
 from pyramid_sqlalchemy import Session, BaseObject
 from sqlalchemy_utils.types.json import JSONType
+
 from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
