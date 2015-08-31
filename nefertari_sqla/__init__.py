@@ -56,7 +56,7 @@ def setup_database(config):
     BaseObject.metadata.bind = engine
     if not database_exists(engine.url):
         log.info(
-            'Database does not exit. Creating database at %s' % engine.url)
+            'Database does not exist. Creating database at %s' % engine.url)
         create_database(engine.url)
 
     # Create HSTORE extension if database is postgresql
