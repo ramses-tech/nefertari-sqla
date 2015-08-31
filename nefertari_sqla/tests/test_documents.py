@@ -722,6 +722,13 @@ class TestBaseMixin(object):
         obj.name = 'bar'
         assert obj._is_modified()
 
+    def test_is_created(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo')
+        assert obj._is_created()
+        obj = obj.save()
+        assert not obj._is_created()
+
 
 class TestBaseDocument(object):
 

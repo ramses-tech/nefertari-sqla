@@ -758,6 +758,10 @@ class BaseMixin(object):
                 if history.added or history.deleted:
                     return True
 
+    def _is_created(self):
+        state = attributes.instance_state(self)
+        return not state.persistent
+
 
 class BaseDocument(BaseObject, BaseMixin):
     """ Base class for SQLA models.
@@ -785,8 +789,7 @@ class BaseDocument(BaseObject, BaseMixin):
 
     def _set_default_acl(self):
         """ Set default object ACL if not already set. """
-        state = attributes.instance_state(self)
-        if not state.persistent and self._acl is None:
+        if self._is_created() and not self._acl:
             self._acl = self.__item_acl__
 
     def save(self, request=None):
