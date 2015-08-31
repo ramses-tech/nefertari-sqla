@@ -569,6 +569,19 @@ class TestBaseMixin(object):
         assert result['other_obj3']['_type'] == 'MyModel'
         assert result['other_obj3']['id'] == 4
 
+    def test_to_dict_depth(self, memory_db):
+        class MyModel(docs.BaseDocument):
+            __tablename__ = 'mymodel'
+            _nested_relationships = ['other_obj']
+            id = fields.IdField(primary_key=True)
+            other_obj = fields.StringField()
+        memory_db()
+        myobj1 = MyModel(id=1)
+        myobj1.other_obj = MyModel(id=2)
+
+        result = myobj1.to_dict(__depth=0)
+        assert result['other_obj'] == 2
+
     @patch.object(docs, 'object_session')
     def test_update_iterables_dict(self, obj_session, memory_db):
         class MyModel(docs.BaseDocument):
@@ -641,7 +654,7 @@ class TestBaseMixin(object):
         myobj.update_iterables("", attr='settings', unique=False)
         assert myobj.settings == []
 
-    def test_get_reference_documents(self, memory_db):
+    def test_get_related_documents(self, memory_db):
 
         class Child(docs.BaseDocument):
             __tablename__ = 'child'
@@ -658,16 +671,31 @@ class TestBaseMixin(object):
 
         memory_db()
 
+        # Item
         parent = Parent(id=1)
         child = Child(id=1, parent=parent)
-        result = [v for v in child.get_reference_documents()]
+        result = [v for v in child.get_related_documents()]
         assert len(result) == 1
         assert result[0][0] is Parent
-        assert result[0][1] == [parent.to_dict()]
+        assert result[0][1] == [parent]
 
-        # 'Many' side of relationship values are not returned
+        # Collection
         assert child in parent.children
-        result = [v for v in parent.get_reference_documents()]
+        result = [v for v in parent.get_related_documents()]
+        assert len(result) == 1
+        assert result[0][0] is Child
+        assert result[0][1] == [child]
+
+        # nested_only=True for nested object
+        Child._nested_relationships = ('parent',)
+        result = [v for v in parent.get_related_documents(nested_only=True)]
+        assert len(result) == 1
+        assert result[0][0] is Child
+        assert result[0][1] == [child]
+
+        # nested_only=True for NOT nested object
+        Parent._nested_relationships = ()
+        result = [v for v in child.get_related_documents(nested_only=True)]
         assert len(result) == 0
 
     def test_is_modified_id_not_persistent(self, memory_db, simple_model):

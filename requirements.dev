@@ -1,8 +1,9 @@
-pytest==2.6.4
-pytest-cov==1.8.1
 mock
-Sphinx
+pytest
+pytest-cov
 releases
+sphinx
 
-git+https://github.com/brandicted/nefertari.git@acls_in_db#egg=nefertari
+git+https://github.com/brandicted/nefertari.git@develop#egg=nefertari
 -e .
+

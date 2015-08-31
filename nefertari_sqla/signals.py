@@ -15,7 +15,7 @@ def index_object(obj, with_refs=True, **kwargs):
     es = ES(obj.__class__.__name__)
     es.index(obj.to_dict(), **kwargs)
     if with_refs:
-        es.index_refs(obj, **kwargs)
+        es.index_relations(obj, **kwargs)
 
 
 def on_after_insert(mapper, connection, target):
@@ -46,7 +46,7 @@ def on_after_update(mapper, connection, target):
     # Reload `target` to get access to processed fields values
     columns = [c.name for c in class_mapper(target.__class__).columns]
     object_session(target).expire(target, attribute_names=columns)
-    index_object(target, request=request)
+    index_object(target, request=request, nested_only=True)
 
 
 def on_after_delete(mapper, connection, target):
@@ -56,7 +56,7 @@ def on_after_delete(mapper, connection, target):
     es = ES(model_cls.__name__)
     obj_id = getattr(target, model_cls.pk_field())
     es.delete(obj_id, request=request)
-    es.index_refs(target, request=request)
+    es.index_relations(target, request=request)
 
 
 def on_bulk_update(update_context):
@@ -77,7 +77,7 @@ def on_bulk_update(update_context):
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj, request=request)
+        es.index_relations(obj, request=request, nested_only=True)
 
 
 def on_bulk_delete(model_cls, objects, request):
@@ -93,7 +93,7 @@ def on_bulk_delete(model_cls, objects, request):
 
     # Reindex relationships
     for obj in objects:
-        es.index_refs(obj, request=request)
+        es.index_relations(obj, request=request)
 
 
 def setup_es_signals_for(source_cls):

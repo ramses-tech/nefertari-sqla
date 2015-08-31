@@ -617,11 +617,13 @@ class BaseMixin(object):
 
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
+        __depth = kwargs.get('__depth')
+        depth_reached = __depth is not None and __depth <= 0
         _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
             include = field in self._nested_relationships
-            if not include:
+            if not include or depth_reached:
                 get_id = lambda v: getattr(v, v.pk_field(), None)
                 if isinstance(value, BaseMixin):
                     value = get_id(value)
@@ -710,19 +712,36 @@ class BaseMixin(object):
         elif is_list:
             update_list(params)
 
-    def get_reference_documents(self):
-        # TODO: Make lazy load of documents
+    def get_related_documents(self, nested_only=False):
+        """ Return pairs of (Model, istances) of relationship fields.
+
+        Pair contains of two elements:
+          :Model: Model class object(s) contained in field.
+          :instances: Model class instance(s) contained in field
+
+        :param nested_only: Boolean, defaults to False. When True, return
+            results only contain data for models on which current model
+            and field are nested.
+        """
         iter_props = class_mapper(self.__class__).iterate_properties
         backref_props = [p for p in iter_props
                          if isinstance(p, properties.RelationshipProperty)]
+
         for prop in backref_props:
             value = getattr(self, prop.key)
-            # Do not index empty values and 'Many' side in OneToMany,
-            # when 'One' side is indexed.
-            # If 'Many' side should be indexed, its value is already a list.
-            if value is None or isinstance(value, list):
+            # Do not index empty values
+            if not value:
                 continue
-            yield (value.__class__, [value.to_dict()])
+            if not isinstance(value, list):
+                value = [value]
+            model_cls = value[0].__class__
+
+            if nested_only:
+                backref = prop.back_populates
+                if backref and backref not in model_cls._nested_relationships:
+                    continue
+
+            yield (model_cls, value)
 
     def _is_modified(self):
         """ Determine if instance is modified.
