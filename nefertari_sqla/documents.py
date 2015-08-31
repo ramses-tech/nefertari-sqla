@@ -797,8 +797,8 @@ class BaseDocument(BaseObject, BaseMixin):
             self._acl = self.default_item_acl()
 
     def save(self, request=None):
-        session = object_session(self)
         self._set_default_acl()
+        session = object_session(self)
         self._bump_version()
         self._request = request
         session = session or Session()
