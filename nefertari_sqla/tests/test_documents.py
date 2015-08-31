@@ -360,8 +360,8 @@ class TestBaseMixin(object):
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
         assert sorted(simple_model.fields_to_query()) == [
-            '_count', '_fields', '_limit', '_page',
-            '_sort', '_start', '_version', 'id', 'name']
+            '_count', '_fields', '_limit', '_page', '_sort',
+            '_start', '_version', 'id', 'name']
 
     @patch.object(docs.BaseMixin, 'get_resource')
     def test_get(self, get_res):
@@ -513,12 +513,14 @@ class TestBaseMixin(object):
                 document='MyModel1', backref_name='model2')
 
         assert MyModel1.get_null_values() == {
+            '_version': None,
             'fk_field': None,
             'name': None,
             'model2': None,
         }
 
         assert MyModel2.get_null_values() == {
+            '_version': None,
             'models1': [],
             'name': None,
         }
@@ -717,6 +719,7 @@ class TestBaseMixin(object):
 class TestBaseDocument(object):
 
     def test_bump_version(self, simple_model, memory_db):
+        from datetime import datetime
         memory_db()
 
         myobj = simple_model(id=None)

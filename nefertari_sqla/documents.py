@@ -19,8 +19,7 @@ from nefertari.utils import (
     DataProxy, drop_reserved_params)
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import (
-    ListField, DictField, IntegerField,
-    apply_column_processors)
+    ListField, DictField, IntegerField, apply_column_processors)
 from . import types
 from .utils import FieldData
 

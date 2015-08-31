@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from mock import patch, Mock
+from sqlalchemy.dialects.postgresql import HSTORE
 
 from .. import fields
 from .. import types
