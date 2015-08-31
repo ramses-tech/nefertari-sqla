@@ -104,14 +104,6 @@ class TestBaseMixin(object):
         assert MyModel.get_es_mapping() == {
             'MyModel': {
                 'properties': {
-                    '_acl': {
-                        'type': 'nested',
-                        'properties': {
-                            'action': {'type': 'string'},
-                            'identifier': {'type': 'string', 'index': 'not_analyzed'},
-                            'permission': {'type': 'string'},
-                        },
-                    },
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'settings': {'type': 'object', 'enabled': False},
@@ -125,14 +117,6 @@ class TestBaseMixin(object):
         assert MyModel2.get_es_mapping() == {
             'MyModel2': {
                 'properties': {
-                    '_acl': {
-                        'type': 'nested',
-                        'properties': {
-                            'action': {'type': 'string'},
-                            'identifier': {'type': 'string', 'index': 'not_analyzed'},
-                            'permission': {'type': 'string'},
-                        },
-                    },
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},
@@ -210,7 +194,7 @@ class TestBaseMixin(object):
         _fields = ['-title', '-_version']
         MyModel.apply_fields(query_set, _fields)
         query_set.with_entities.assert_called_once_with(
-            MyModel._acl, MyModel.desc, MyModel.id, MyModel.name)
+            MyModel.desc, MyModel.id, MyModel.name)
 
     def test_apply_fields_no_exclude_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -357,12 +341,12 @@ class TestBaseMixin(object):
     def test_native_fields(self, simple_model, memory_db):
         memory_db()
         assert sorted(simple_model.native_fields()) == [
-            '_acl', '_version', 'id', 'name']
+            '_version', 'id', 'name']
 
     def test_mapped_columns(self, simple_model, memory_db):
         memory_db()
         cols = simple_model._mapped_columns().keys()
-        assert sorted(cols) == ['_acl', '_version', 'id', 'name']
+        assert sorted(cols) == ['_version', 'id', 'name']
 
     @patch.object(docs, 'class_mapper')
     def test_mapped_relationships(
@@ -376,7 +360,7 @@ class TestBaseMixin(object):
     def test_fields_to_query(self, simple_model, memory_db):
         memory_db()
         assert sorted(simple_model.fields_to_query()) == [
-            '_acl', '_count', '_fields', '_limit', '_page',
+            '_count', '_fields', '_limit', '_page',
             '_sort', '_start', '_version', 'id', 'name']
 
     @patch.object(docs.BaseMixin, 'get_resource')
@@ -555,7 +539,7 @@ class TestBaseMixin(object):
 
         result = myobj1.to_dict()
         assert list(sorted(result.keys())) == [
-            '_acl', '_pk', '_type', '_version', 'id', 'other_obj',
+            '_pk', '_type', '_version', 'id', 'other_obj',
             'other_obj2', 'other_obj3']
         assert result['_type'] == 'MyModel'
         assert result['id'] == 1
@@ -732,16 +716,6 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    @patch.object(docs, 'ACLField')
-    def test_get_acl(self, mofk_field, simple_model, memory_db):
-        memory_db()
-        mofk_field.objectify_acl.return_value = [(1, 2, 3)]
-        myobj = simple_model()
-        myobj._acl = [('a', 'b', 'c')]
-        val = myobj.get_acl()
-        assert val == [(1, 2, 3)]
-        mofk_field.objectify_acl.assert_called_once_with([('a', 'b', 'c')])
-
     def test_bump_version(self, simple_model, memory_db):
         memory_db()
 
@@ -753,21 +727,6 @@ class TestBaseDocument(object):
         myobj.name = 'foo'
         myobj._bump_version()
         assert myobj._version == 1
-
-    def test_set_default_acl(self, simple_model, memory_db):
-        simple_model.__item_acl__ = ((1, 2, 3),)
-        obj = simple_model()
-        assert obj._acl is None
-        obj._set_default_acl()
-        assert obj._acl == ((1, 2, 3),)
-
-    def test_set_default_acl_already_present(
-            self, simple_model, memory_db):
-        simple_model.__item_acl__ = ((1, 2, 3),)
-        obj = simple_model()
-        obj._acl = [('a', 'b', 'c')]
-        obj._set_default_acl()
-        assert obj._acl == [('a', 'b', 'c')]
 
     @patch.object(docs, 'object_session')
     def test_save(self, obj_session, simple_model, memory_db):
@@ -884,7 +843,7 @@ class TestBaseDocument(object):
         obj.apply_processors = Mock()
         obj.apply_before_validation()
         obj.apply_processors.assert_called_once_with(
-            ['_acl', '_version', 'id'], before=True)
+            ['_version', 'id'], before=True)
 
     def test_apply_processors(self, memory_db):
         class MyModel(docs.BaseDocument):
