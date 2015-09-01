@@ -35,8 +35,6 @@ from .fields import (
     ListField,
 )
 
-from .fields import ProcessableRelationshipProperty as RelationshipField
-
 
 log = logging.getLogger(__name__)
 
