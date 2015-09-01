@@ -73,14 +73,6 @@ TYPES_MAP = {
     types.LimitedUnicode: {'type': 'string'},
     types.LimitedUnicodeText: {'type': 'string'},
     types.Choice: {'type': 'string'},
-    types.ACLType: {
-        'type': 'nested',
-        'properties': {
-            'action': {'type': 'string'},
-            'identifier': {'type': 'string', 'index': 'not_analyzed'},
-            'permission': {'type': 'string'},
-        }
-    },
 
     types.Boolean: {'type': 'boolean'},
     types.LargeBinary: {'type': 'object'},
@@ -121,9 +113,12 @@ class BaseMixin(object):
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
-    def get_es_mapping(cls):
+    def get_es_mapping(cls, types_map=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if types_map is None:
+            types_map = TYPES_MAP
+
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -139,16 +134,16 @@ class BaseMixin(object):
             if isinstance(column_type, types.ChoiceArray):
                 column_type = column_type.impl.item_type
             column_type = type(column_type)
-            if column_type not in TYPES_MAP:
+            if column_type not in types_map:
                 continue
-            properties[name] = TYPES_MAP[column_type]
+            properties[name] = types_map[column_type]
 
         for name, column in relationships.items():
             if name in cls._nested_relationships:
                 column_type = {'type': 'object'}
             else:
                 rel_pk_field = column.mapper.class_.pk_field_type()
-                column_type = TYPES_MAP[rel_pk_field]
+                column_type = types_map[rel_pk_field]
             properties[name] = column_type
 
         properties['_pk'] = {'type': 'string'}
