@@ -26,48 +26,6 @@ from .types import (
 )
 
 
-def apply_column_processors(column_obj, before=False, after=False,
-                            **proc_kwargs):
-    """ Apply column processors of :column_obj:.
-
-    :param column_obj: Column instance for which processors should be
-        applied.
-    :param before: Boolean indicating whether before_validation processors
-        should be applied.
-    :param after: Boolean indicating whether after_validation processors
-        should be applied.
-    :param proc_kwargs: Dict containing kwargs that should be passed to
-        each processors. Notable one is 'new_value' - new value that was
-        set to column.
-    """
-    processors = []
-    if before:
-        processors += list(column_obj.before_validation)
-    if after:
-        processors += list(column_obj.after_validation)
-    for proc in processors:
-        processed_value = proc(**proc_kwargs)
-        proc_kwargs['new_value'] = processed_value
-    return proc_kwargs['new_value']
-
-
-class ProcessableMixin(object):
-    """ Mixin that allows running callables on a value that
-    is being set on a field.
-    """
-    def __init__(self, *args, **kwargs):
-        """ Pop before/after validation processors
-
-        :before_validation: Processors that are run before session.flush()
-        :after_validation: Processors that are run after session.flush()
-            but before session.commit()
-        """
-        self._kwargs_backup = kwargs.copy()
-        self.before_validation = kwargs.pop('before_validation', ())
-        self.after_validation = kwargs.pop('after_validation', ())
-        super(ProcessableMixin, self).__init__(*args, **kwargs)
-
-
 class BaseField(Column):
     """ Base plain column that otherwise would be created as
     sqlalchemy.Column(sqlalchemy.Type())
@@ -180,12 +138,12 @@ class BaseField(Column):
         return obj
 
 
-class BigIntegerField(ProcessableMixin, BaseField):
+class BigIntegerField(BaseField):
     _sqla_type_cls = LimitedBigInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class BooleanField(ProcessableMixin, BaseField):
+class BooleanField(BaseField):
     _sqla_type_cls = Boolean
     _type_unchanged_kwargs = ('create_constraint')
 
@@ -202,31 +160,31 @@ class BooleanField(ProcessableMixin, BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class DateField(ProcessableMixin, BaseField):
+class DateField(BaseField):
     _sqla_type_cls = Date
     _type_unchanged_kwargs = ()
 
 
-class DateTimeField(ProcessableMixin, BaseField):
+class DateTimeField(BaseField):
     _sqla_type_cls = DateTime
     _type_unchanged_kwargs = ('timezone',)
 
 
-class ChoiceField(ProcessableMixin, BaseField):
+class ChoiceField(BaseField):
     _sqla_type_cls = Choice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'choices')
 
 
-class FloatField(ProcessableMixin, BaseField):
+class FloatField(BaseField):
     _sqla_type_cls = LimitedFloat
     _type_unchanged_kwargs = (
         'precision', 'asdecimal', 'decimal_return_scale',
         'min_value', 'max_value')
 
 
-class IntegerField(ProcessableMixin, BaseField):
+class IntegerField(BaseField):
     _sqla_type_cls = LimitedInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
@@ -238,13 +196,13 @@ class IdField(IntegerField):
     pass
 
 
-class IntervalField(ProcessableMixin, BaseField):
+class IntervalField(BaseField):
     _sqla_type_cls = Interval
     _type_unchanged_kwargs = (
         'native', 'second_precision', 'day_precision')
 
 
-class BinaryField(ProcessableMixin, BaseField):
+class BinaryField(BaseField):
     _sqla_type_cls = LargeBinary
     _type_unchanged_kwargs = ('length',)
 
@@ -253,25 +211,25 @@ class BinaryField(ProcessableMixin, BaseField):
 #     _sqla_type_cls = MatchType
 
 
-class DecimalField(ProcessableMixin, BaseField):
+class DecimalField(BaseField):
     _sqla_type_cls = LimitedNumeric
     _type_unchanged_kwargs = (
         'precision', 'scale', 'decimal_return_scale', 'asdecimal',
         'min_value', 'max_value')
 
 
-class PickleField(ProcessableMixin, BaseField):
+class PickleField(BaseField):
     _sqla_type_cls = PickleType
     _type_unchanged_kwargs = (
         'protocol', 'pickler', 'comparator')
 
 
-class SmallIntegerField(ProcessableMixin, BaseField):
+class SmallIntegerField(BaseField):
     _sqla_type_cls = LimitedSmallInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class StringField(ProcessableMixin, BaseField):
+class StringField(BaseField):
     _sqla_type_cls = LimitedString
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
@@ -306,7 +264,7 @@ class UnicodeTextField(StringField):
     _sqla_type_cls = LimitedUnicodeText
 
 
-class DictField(ProcessableMixin, BaseField):
+class DictField(BaseField):
     _sqla_type_cls = JSONType
     _type_unchanged_kwargs = ()
 
@@ -317,7 +275,7 @@ class DictField(ProcessableMixin, BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class ListField(ProcessableMixin, BaseField):
+class ListField(BaseField):
     _sqla_type_cls = ChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')

@@ -13,14 +13,6 @@ from .. import fields
 from .fixtures import memory_db, db_session, simple_model
 
 
-def _test_processor_plus(**kwargs):
-    return kwargs['new_value'] + '+'
-
-
-def _test_processor_minus(**kwargs):
-    return kwargs['new_value'] + '-'
-
-
 class TestDocumentHelpers(object):
 
     @patch.object(docs, 'BaseObject')
@@ -778,90 +770,6 @@ class TestBaseDocument(object):
         obj.delete()
         obj_session.assert_called_once_with(obj)
         obj_session().delete.assert_called_once_with(obj)
-
-    def test_apply_before_validation_new_object(self, memory_db):
-        def _test_processor_foobar(**kwargs):
-            return 'foobar'
-
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField(
-                before_validation=[_test_processor_foobar],
-                after_validation=[_test_processor_plus])
-            email = fields.StringField(before_validation=[
-                _test_processor_foobar])
-        memory_db()
-
-        obj = MyModel(name='myname')
-        obj.apply_before_validation()
-        assert obj.name == 'foobar'
-        assert obj.email == 'foobar'
-
-    def test_apply_before_validation_existing_object(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-            name = fields.StringField(
-                before_validation=[_test_processor_minus],
-                after_validation=[_test_processor_plus])
-            email = fields.StringField(before_validation=[
-                _test_processor_minus])
-        memory_db()
-
-        obj = MyModel(id=1, name='myname', email='FOO').save()
-        assert obj.name == 'myname-+'
-        assert obj.email == 'FOO-'
-
-        obj = MyModel.get(id=1)
-        assert obj.name == 'myname-+'
-        obj.name = 'supername'
-        obj.apply_before_validation()
-        assert obj.name == 'supername-'
-        assert obj.email == 'FOO-'
-
-    def test_apply_after_validation(self, memory_db):
-        memory_db()
-        obj = docs.BaseDocument()
-        obj.apply_processors = Mock()
-        obj._columns_to_process = [1, 2, 3]
-        obj.apply_after_validation()
-        obj.apply_processors.assert_called_once_with(
-            [1, 2, 3], after=True)
-
-    def test_apply_before_validation(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            id = fields.IdField(primary_key=True)
-        memory_db()
-
-        obj = MyModel(id=1)
-        obj.apply_processors = Mock()
-        obj.apply_before_validation()
-        obj.apply_processors.assert_called_once_with(
-            ['_version', 'id'], before=True)
-
-    def test_apply_processors(self, memory_db):
-        class MyModel(docs.BaseDocument):
-            __tablename__ = 'mymodel'
-            name = fields.StringField(
-                primary_key=True,
-                before_validation=[_test_processor_minus],
-                after_validation=[_test_processor_plus])
-        memory_db()
-        obj = MyModel(name='foo')
-
-        obj.apply_processors(before=True)
-        assert obj.name == 'foo-'
-
-        obj.apply_processors(after=True)
-        assert obj.name == 'foo-+'
-
-        obj.apply_processors()
-        assert obj.name == 'foo-+'
-
-        obj.apply_processors(column_names=['name'], before=True, after=True)
-        assert obj.name == 'foo-+-+'
 
 
 class TestGetCollection(object):
