@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* :release:`0.3.3 <2015-09-02>`
+* :bug:`-` Fixed a bug when using reserved query params with GET tunneling
+* :bug:`-` Fixed ES double indexation bug
+
 * :release:`0.3.2 <2015-08-19>`
 * :bug:`-` Fixed a bug whereby objects could not be deleted from within processors
 * :bug:`-` Fixed a bug with _update_many() and _delete_many() not working with querysets returned by get_collection()
