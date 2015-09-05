@@ -1,4 +1,4 @@
-from sqlalchemy.orm import backref, public_factory, RelationshipProperty
+from sqlalchemy.orm import backref, relationship
 from sqlalchemy.schema import Column, ForeignKey
 from sqlalchemy_utils.types.json import JSONType
 
@@ -24,48 +24,6 @@ from .types import (
     Choice,
     ChoiceArray,
 )
-
-
-def apply_column_processors(column_obj, before=False, after=False,
-                            **proc_kwargs):
-    """ Apply column processors of :column_obj:.
-
-    :param column_obj: Column instance for which processors should be
-        applied.
-    :param before: Boolean indicating whether before_validation processors
-        should be applied.
-    :param after: Boolean indicating whether after_validation processors
-        should be applied.
-    :param proc_kwargs: Dict containing kwargs that should be passed to
-        each processors. Notable one is 'new_value' - new value that was
-        set to column.
-    """
-    processors = []
-    if before:
-        processors += list(column_obj.before_validation)
-    if after:
-        processors += list(column_obj.after_validation)
-    for proc in processors:
-        processed_value = proc(**proc_kwargs)
-        proc_kwargs['new_value'] = processed_value
-    return proc_kwargs['new_value']
-
-
-class ProcessableMixin(object):
-    """ Mixin that allows running callables on a value that
-    is being set on a field.
-    """
-    def __init__(self, *args, **kwargs):
-        """ Pop before/after validation processors
-
-        :before_validation: Processors that are run before session.flush()
-        :after_validation: Processors that are run after session.flush()
-            but before session.commit()
-        """
-        self._kwargs_backup = kwargs.copy()
-        self.before_validation = kwargs.pop('before_validation', ())
-        self.after_validation = kwargs.pop('after_validation', ())
-        super(ProcessableMixin, self).__init__(*args, **kwargs)
 
 
 class BaseField(Column):
@@ -180,12 +138,12 @@ class BaseField(Column):
         return obj
 
 
-class BigIntegerField(ProcessableMixin, BaseField):
+class BigIntegerField(BaseField):
     _sqla_type_cls = LimitedBigInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class BooleanField(ProcessableMixin, BaseField):
+class BooleanField(BaseField):
     _sqla_type_cls = Boolean
     _type_unchanged_kwargs = ('create_constraint')
 
@@ -202,31 +160,31 @@ class BooleanField(ProcessableMixin, BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class DateField(ProcessableMixin, BaseField):
+class DateField(BaseField):
     _sqla_type_cls = Date
     _type_unchanged_kwargs = ()
 
 
-class DateTimeField(ProcessableMixin, BaseField):
+class DateTimeField(BaseField):
     _sqla_type_cls = DateTime
     _type_unchanged_kwargs = ('timezone',)
 
 
-class ChoiceField(ProcessableMixin, BaseField):
+class ChoiceField(BaseField):
     _sqla_type_cls = Choice
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
         '_warn_on_bytestring', 'choices')
 
 
-class FloatField(ProcessableMixin, BaseField):
+class FloatField(BaseField):
     _sqla_type_cls = LimitedFloat
     _type_unchanged_kwargs = (
         'precision', 'asdecimal', 'decimal_return_scale',
         'min_value', 'max_value')
 
 
-class IntegerField(ProcessableMixin, BaseField):
+class IntegerField(BaseField):
     _sqla_type_cls = LimitedInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
@@ -238,13 +196,13 @@ class IdField(IntegerField):
     pass
 
 
-class IntervalField(ProcessableMixin, BaseField):
+class IntervalField(BaseField):
     _sqla_type_cls = Interval
     _type_unchanged_kwargs = (
         'native', 'second_precision', 'day_precision')
 
 
-class BinaryField(ProcessableMixin, BaseField):
+class BinaryField(BaseField):
     _sqla_type_cls = LargeBinary
     _type_unchanged_kwargs = ('length',)
 
@@ -253,25 +211,25 @@ class BinaryField(ProcessableMixin, BaseField):
 #     _sqla_type_cls = MatchType
 
 
-class DecimalField(ProcessableMixin, BaseField):
+class DecimalField(BaseField):
     _sqla_type_cls = LimitedNumeric
     _type_unchanged_kwargs = (
         'precision', 'scale', 'decimal_return_scale', 'asdecimal',
         'min_value', 'max_value')
 
 
-class PickleField(ProcessableMixin, BaseField):
+class PickleField(BaseField):
     _sqla_type_cls = PickleType
     _type_unchanged_kwargs = (
         'protocol', 'pickler', 'comparator')
 
 
-class SmallIntegerField(ProcessableMixin, BaseField):
+class SmallIntegerField(BaseField):
     _sqla_type_cls = LimitedSmallInteger
     _type_unchanged_kwargs = ('min_value', 'max_value')
 
 
-class StringField(ProcessableMixin, BaseField):
+class StringField(BaseField):
     _sqla_type_cls = LimitedString
     _type_unchanged_kwargs = (
         'collation', 'convert_unicode', 'unicode_error',
@@ -306,7 +264,7 @@ class UnicodeTextField(StringField):
     _sqla_type_cls = LimitedUnicodeText
 
 
-class DictField(ProcessableMixin, BaseField):
+class DictField(BaseField):
     _sqla_type_cls = JSONType
     _type_unchanged_kwargs = ()
 
@@ -317,7 +275,7 @@ class DictField(ProcessableMixin, BaseField):
         return type_args, type_kw, cleaned_kw
 
 
-class ListField(ProcessableMixin, BaseField):
+class ListField(BaseField):
     _sqla_type_cls = ChoiceArray
     _type_unchanged_kwargs = (
         'as_tuple', 'dimensions', 'zero_indexes', 'choices')
@@ -501,77 +459,18 @@ relationship_kwargs = {
     'active_history', 'cascade_backrefs', 'load_on_pending',
     'strategy_class', '_local_remote_pairs', 'query_class', 'info',
     'document', 'name',
-    'before_validation', 'after_validation',
 }
 
 
-class ProcessableRelationshipProperty(RelationshipProperty):
-    """ Custom RelationshipProperty subclass.
-
-    Makes possible to use processors with backref generated
-    RelationshipProperty. This approach is used as there is no
-    other obvious way to reach RelationshipProperty generated for backref.
-
-    Processors are assigned to backref inside `self._generate_backref`
-    method where `before_validation` and `after_validation` attrs
-    of backref RelationshipProperty are set using values of
-    `self.backref_before_validation` and `self.backref_after_validation`
-    respectively.
-
-    The latter two attributes are passed to init inside `Relationship`
-    constructor function.
-    """
-    def __init__(self, *args, **kwargs):
-        self.before_validation = kwargs.pop('before_validation', ())
-        self.after_validation = kwargs.pop('after_validation', ())
-        self.backref_before_validation = kwargs.pop(
-            'backref_before_validation', ())
-        self.backref_after_validation = kwargs.pop(
-            'backref_after_validation', ())
-        super(ProcessableRelationshipProperty, self).__init__(
-            *args, **kwargs)
-
-    def _set_backref_processors(self):
-        """ Actual method that sets processors to backref. """
-        mapper = self.mapper.primary_mapper()
-        rels = {rel.key: rel for rel in mapper.relationships}
-        try:
-            backref_field = rels[self.back_populates]
-        except KeyError:
-            return
-        backref_field.before_validation = self.backref_before_validation
-        backref_field.after_validation = self.backref_after_validation
-        backref_field._init_kwargs = {
-            'before_validation': backref_field.before_validation,
-            'after_validation': backref_field.after_validation,
-        }
-        if isinstance(self.backref, tuple):
-            backref_field._init_kwargs.update(self.backref[1])
-
-    def _generate_backref(self, *args, **kwargs):
-        """ Override to call `_set_backref_processors` after super. """
-        data = super(ProcessableRelationshipProperty, self)._generate_backref(
-            *args, **kwargs)
-        self._set_backref_processors()
-        return data
-
-
-""" Custom constructor for subclass of RelationshipProperty -
-ProcessableRelationshipProperty.
-"""
-processable_relationship = public_factory(
-    ProcessableRelationshipProperty, ".orm.relationship")
-
-
 def Relationship(**kwargs):
-    """ Thin wrapper around processable_relationship.
+    """ Thin wrapper around relationship.
 
     The goal of this wrapper is to allow passing both relationship and
     backref arguments to a single function.
     Backref arguments should be prefixed with 'backref_'.
     This function splits relationship-specific and backref-specific arguments
     and makes a call like:
-        processable_relationship(..., ..., backref=backref(...))
+        relationship(..., ..., backref=backref(...))
 
     :lazy: setting is set to 'immediate' on the 'One' side of One2One or
     One2Many relationships. This is done both for relationship itself
@@ -596,13 +495,6 @@ def Relationship(**kwargs):
               or k[backref_pre_len:] in relationship_kwargs}
     rel_kw, backref_kw = {}, {}
 
-    rel_kw.update({
-        'backref_before_validation': kwargs.pop(
-            backref_pre + 'before_validation', ()),
-        'backref_after_validation': kwargs.pop(
-            backref_pre + 'after_validation', ())
-    })
-
     for key, val in kwargs.items():
         if key.startswith(backref_pre):
             key = key[backref_pre_len:]
@@ -620,6 +512,6 @@ def Relationship(**kwargs):
         backref_name = backref_kw.pop('name')
         rel_kw['backref'] = backref(backref_name, **backref_kw)
 
-    rel_field = processable_relationship(rel_document, **rel_kw)
+    rel_field = relationship(rel_document, **rel_kw)
     rel_field._init_kwargs = _init_kwargs
     return rel_field

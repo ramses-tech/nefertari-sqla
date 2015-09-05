@@ -19,10 +19,8 @@ from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     DataProxy, drop_reserved_params)
 from .signals import ESMetaclass, on_bulk_delete
-from .fields import (
-    ListField, DictField, IntegerField, apply_column_processors)
+from .fields import ListField, DictField, IntegerField
 from . import types
-from .utils import FieldData
 
 
 log = logging.getLogger(__name__)
@@ -765,11 +763,9 @@ class BaseDocument(BaseObject, BaseMixin):
         self._request = request
         session = session or Session()
         try:
-            self.apply_before_validation()
             session.add(self)
             session.flush()
             session.expire(self)
-            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.args[0]:
@@ -785,11 +781,9 @@ class BaseDocument(BaseObject, BaseMixin):
         try:
             self._update(params)
             self._bump_version()
-            self.apply_before_validation()
             session = object_session(self)
             session.add(self)
             session.flush()
-            self.apply_after_validation()
             return self
         except (IntegrityError,) as e:
             if 'duplicate' not in e.args[0]:
@@ -804,72 +798,13 @@ class BaseDocument(BaseObject, BaseMixin):
         self._request = request
         object_session(self).delete(self)
 
-    def apply_processors(self, column_names=None, before=False, after=False):
-        """ Apply processors to columns with :column_names: names.
-
-        Arguments:
-          :column_names: List of string names of changed columns.
-          :before: Boolean indicating whether to apply before_validation
-            processors.
-          :after: Boolean indicating whether to apply after_validation
-            processors.
-        """
-        columns = self._mapped_columns()
-        columns.update(self._mapped_relationships())
-
-        if column_names is None:
-            column_names = columns.keys()
-
-        for name in column_names:
-            column = columns.get(name)
-            if column is not None and hasattr(column, 'before_validation'):
-                new_value = getattr(self, name)
-                field_data = FieldData(
-                    name=name,
-                    params=getattr(column, '_init_kwargs', None),
-                )
-                proc_kwargs = {
-                    'new_value': new_value,
-                    'instance': self,
-                    'field': field_data,
-                    'request': getattr(self, '_request', None),
-                }
-                processed_value = apply_column_processors(
-                    column, before=before, after=after,
-                    **proc_kwargs)
-                if new_value != processed_value:
-                    setattr(self, name, processed_value)
-
-    def apply_before_validation(self):
-        """ Determine changed columns and run `self.apply_processors` to
-        apply needed processors.
-
-        Note that at this stage, field values are in the exact same state
-        you posted/set them. E.g. if you set time_field='11/22/2000',
-        self.time_field will be equal to '11/22/2000' here.
-        """
-        state = attributes.instance_state(self)
-
-        if state.persistent:
-            changed_columns = list(state.committed_state.keys())
-        else:  # New object
-            columns = self._mapped_columns()
-            columns.update(self._mapped_relationships())
-            changed_columns = list(columns.keys())
-
-        changed_columns = sorted(changed_columns)
-        self._columns_to_process = changed_columns
-        self.apply_processors(changed_columns, before=True)
-
-    def apply_after_validation(self):
-        """ Run `self.apply_processors` with columns names determined by
-        `self.apply_before_validation`.
-
-        Note that at this stage, field values are in the exact same state
-        you posted/set them. E.g. if you set time_field='11/22/2000',
-        self.time_field will be equal to '11/22/2000' here.
-        """
-        self.apply_processors(self._columns_to_process, after=True)
+    @classmethod
+    def get_field_params(cls, field_name):
+        """ Get init params of column named :field_name:. """
+        columns = cls._mapped_columns()
+        columns.update(cls._mapped_relationships())
+        column = columns.get(field_name)
+        return getattr(column, '_init_kwargs', None)
 
 
 class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
