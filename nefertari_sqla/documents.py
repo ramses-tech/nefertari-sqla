@@ -103,10 +103,14 @@ class BaseMixin(object):
             included documents. If relationship field is not
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
+        _nesting_depth: Depth of relationship field nesting in JSON.
+            Defaults to 1(one) which makes only one level of relationship
+            nested.
     """
     _public_fields = None
     _auth_fields = None
     _nested_relationships = ()
+    _nesting_depth = 1
 
     _type = property(lambda self: self.__class__.__name__)
 
@@ -601,7 +605,10 @@ class BaseMixin(object):
 
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
-        __depth = kwargs.get('__depth', 1)
+        __depth = kwargs.get('__depth')
+        if __depth is None:
+            __depth = self._nesting_depth
+
         depth_reached = __depth is not None and __depth <= 0
         _data = dictset()
         for field in native_fields:
