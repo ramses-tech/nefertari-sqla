@@ -146,7 +146,7 @@ class BaseMixin(object):
                 column_type = {'type': 'object'}
                 submapping = column.mapper.class_.get_es_mapping(
                     _depth=_depth-1)
-                column_type.update(submapping.values()[0])
+                column_type.update(list(submapping.values())[0])
             else:
                 rel_pk_field = column.mapper.class_.pk_field_type()
                 column_type = TYPES_MAP[rel_pk_field]
