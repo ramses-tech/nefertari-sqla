@@ -120,6 +120,7 @@ class BaseMixin(object):
         from nefertari.elasticsearch import ES
         if _depth is None:
             _depth = cls._nesting_depth
+        depth_reached = _depth <= 0
 
         properties = {}
         mapping = {
@@ -140,7 +141,6 @@ class BaseMixin(object):
                 continue
             properties[name] = TYPES_MAP[column_type]
 
-        depth_reached = _depth <= 0
         for name, column in relationships.items():
             if name in cls._nested_relationships and not depth_reached:
                 column_type = {'type': 'object'}
