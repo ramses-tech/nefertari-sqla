@@ -115,9 +115,12 @@ class BaseMixin(object):
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
-    def get_es_mapping(cls):
+    def get_es_mapping(cls, _depth=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if _depth is None:
+            _depth = cls._nesting_depth
+
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -137,9 +140,13 @@ class BaseMixin(object):
                 continue
             properties[name] = TYPES_MAP[column_type]
 
+        depth_reached = _depth <= 0
         for name, column in relationships.items():
-            if name in cls._nested_relationships:
+            if name in cls._nested_relationships and not depth_reached:
                 column_type = {'type': 'object'}
+                col_schema = column.mapper.class_.get_es_mapping(
+                    _depth=_depth-1)
+                column_type.update(col_schema.values()[0])
             else:
                 rel_pk_field = column.mapper.class_.pk_field_type()
                 column_type = TYPES_MAP[rel_pk_field]
@@ -604,13 +611,13 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
-        native_fields = self.__class__.native_fields()
-        __depth = kwargs.get('__depth')
-        if __depth is None:
-            __depth = self._nesting_depth
+        _depth = kwargs.get('_depth')
+        if _depth is None:
+            _depth = self._nesting_depth
+        depth_reached = _depth is not None and _depth <= 0
 
-        depth_reached = __depth is not None and __depth <= 0
         _data = dictset()
+        native_fields = self.__class__.native_fields()
         for field in native_fields:
             value = getattr(self, field, None)
 
@@ -618,14 +625,14 @@ class BaseMixin(object):
             if not include or depth_reached:
                 encoder = lambda v: getattr(v, v.pk_field(), None)
             else:
-                encoder = lambda v: v.to_dict(__depth=__depth-1)
+                encoder = lambda v: v.to_dict(_depth=_depth-1)
 
             if isinstance(value, BaseMixin):
                 value = encoder(value)
             elif isinstance(value, InstrumentedList):
                 value = [encoder(val) for val in value]
             elif hasattr(value, 'to_dict'):
-                value = value.to_dict(__depth=__depth-1)
+                value = value.to_dict(_depth=_depth-1)
 
             _data[field] = value
         _data['_type'] = self._type

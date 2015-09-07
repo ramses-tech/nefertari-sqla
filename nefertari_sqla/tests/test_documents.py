@@ -74,6 +74,9 @@ class TestBaseMixin(object):
     def test_get_es_mapping(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
+            _nested_relationships = ['parent']
+            _nesting_depth = 0
+
             my_id = fields.IdField()
             name = fields.StringField(primary_key=True)
             settings = fields.DictField()
@@ -84,6 +87,8 @@ class TestBaseMixin(object):
         class MyModel2(docs.BaseDocument):
             _nested_relationships = ['myself']
             __tablename__ = 'mymodel2'
+            _nesting_depth = 1
+
             name = fields.StringField(primary_key=True)
             myself = fields.Relationship(
                 document='MyModel', backref_name='parent',
@@ -93,7 +98,9 @@ class TestBaseMixin(object):
                 ref_column_type=fields.StringField)
         memory_db()
 
-        assert MyModel.get_es_mapping() == {
+        my_model_mapping = MyModel.get_es_mapping()
+
+        assert my_model_mapping == {
             'MyModel': {
                 'properties': {
                     '_pk': {'type': 'string'},
@@ -106,14 +113,20 @@ class TestBaseMixin(object):
                 }
             }
         }
-        assert MyModel2.get_es_mapping() == {
+        my_model2_mapping = MyModel2.get_es_mapping()
+        myself_props = my_model_mapping['MyModel']['properties']
+
+        assert my_model2_mapping == {
             'MyModel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
                     '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},
                     'name': {'type': 'string'},
-                    'myself': {'type': 'object'}
+                    'myself': {
+                        'type': 'object',
+                        'properties': myself_props
+                    }
                 }
             }
         }
@@ -557,7 +570,7 @@ class TestBaseMixin(object):
         myobj1 = MyModel(id=1)
         myobj1.other_obj = MyModel(id=2)
 
-        result = myobj1.to_dict(__depth=0)
+        result = myobj1.to_dict(_depth=0)
         assert result['other_obj'] == 2
 
     @patch.object(docs, 'object_session')
