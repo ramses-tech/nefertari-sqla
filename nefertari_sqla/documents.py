@@ -17,7 +17,7 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
-    DataProxy, drop_reserved_params)
+    drop_reserved_params)
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, IntegerField
 from . import types
@@ -601,23 +601,29 @@ class BaseMixin(object):
 
     def to_dict(self, **kwargs):
         native_fields = self.__class__.native_fields()
-        __depth = kwargs.get('__depth')
+        __depth = kwargs.get('__depth', 1)
         depth_reached = __depth is not None and __depth <= 0
-        _data = {}
+        _data = dictset()
         for field in native_fields:
             value = getattr(self, field, None)
+
             include = field in self._nested_relationships
             if not include or depth_reached:
-                get_id = lambda v: getattr(v, v.pk_field(), None)
-                if isinstance(value, BaseMixin):
-                    value = get_id(value)
-                elif isinstance(value, InstrumentedList):
-                    value = [get_id(val) for val in value]
+                encoder = lambda v: getattr(v, v.pk_field(), None)
+            else:
+                encoder = lambda v: v.to_dict(__depth=__depth-1)
+
+            if isinstance(value, BaseMixin):
+                value = encoder(value)
+            elif isinstance(value, InstrumentedList):
+                value = [encoder(val) for val in value]
+            elif hasattr(value, 'to_dict'):
+                value = value.to_dict(__depth=__depth-1)
+
             _data[field] = value
-        _dict = DataProxy(_data).to_dict(**kwargs)
-        _dict['_type'] = self._type
-        _dict['_pk'] = str(getattr(self, self.pk_field()))
-        return _dict
+        _data['_type'] = self._type
+        _data['_pk'] = str(getattr(self, self.pk_field()))
+        return _data
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
