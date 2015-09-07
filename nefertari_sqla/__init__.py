@@ -9,7 +9,7 @@ from .serializers import JSONEncoder, ESJSONSerializer
 from .signals import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
-    get_relationship_cls, FieldData)
+    get_relationship_cls)
 from .fields import (
     BigIntegerField,
     BooleanField,
@@ -34,8 +34,6 @@ from .fields import (
     DictField,
     ListField,
 )
-
-from .fields import ProcessableRelationshipProperty as RelationshipField
 
 
 log = logging.getLogger(__name__)

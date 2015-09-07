@@ -1,11 +1,9 @@
 from sqlalchemy.orm.properties import RelationshipProperty
 from sqlalchemy.orm import class_mapper
 
-from .fields import ProcessableRelationshipProperty
 
 relationship_fields = (
     RelationshipProperty,
-    ProcessableRelationshipProperty,
 )
 
 
@@ -36,16 +34,3 @@ def get_relationship_cls(field, model_cls):
 
 class FieldsQuerySet(list):
     pass
-
-
-class FieldData(object):
-    """ Keeps field data in a generic format.
-
-    Is passed to field processors.
-    """
-    def __init__(self, name, params=None):
-        self.name = name
-        self.params = params
-
-    def __repr__(self):
-        return '<FieldData: {}>'.format(self.name)
