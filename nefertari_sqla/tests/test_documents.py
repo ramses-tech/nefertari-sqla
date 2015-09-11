@@ -505,14 +505,12 @@ class TestBaseMixin(object):
                 document='MyModel1', backref_name='model2')
 
         assert MyModel1.get_null_values() == {
-            '_version': None,
             'fk_field': None,
             'name': None,
             'model2': None,
         }
 
         assert MyModel2.get_null_values() == {
-            '_version': None,
             'models1': [],
             'name': None,
         }
@@ -699,6 +697,13 @@ class TestBaseMixin(object):
         obj = simple_model.get(id=1)
         obj.name = 'bar'
         assert obj._is_modified()
+
+    def test_is_created(self, memory_db, simple_model):
+        memory_db()
+        obj = simple_model(id=1, name='foo')
+        assert obj._is_created()
+        obj = obj.save()
+        assert not obj._is_created()
 
 
 class TestBaseDocument(object):
