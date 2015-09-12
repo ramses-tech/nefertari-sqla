@@ -1,8 +1,8 @@
 SQLA Engine
 ===========
 
-Index
------
+Table of Contents
+=================
 
 .. toctree::
    :maxdepth: 2
