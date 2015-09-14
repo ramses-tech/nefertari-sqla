@@ -76,8 +76,7 @@ def on_bulk_update(update_context):
     es.index(documents, request=request)
 
     # Reindex relationships
-    for obj in objects:
-        es.index_relations(obj, request=request, nested_only=True)
+    es.bulk_index_relations(objects, request=request, nested_only=True)
 
 
 def on_bulk_delete(model_cls, objects, request):
@@ -92,8 +91,7 @@ def on_bulk_delete(model_cls, objects, request):
     es.delete(ids, request=request)
 
     # Reindex relationships
-    for obj in objects:
-        es.index_relations(obj, request=request)
+    es.bulk_index_relations(objects, request=request)
 
 
 def setup_es_signals_for(source_cls):
