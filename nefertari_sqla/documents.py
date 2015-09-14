@@ -65,7 +65,7 @@ def process_bools(_dict):
     return _dict
 
 
-types_map = {
+TYPES_MAP = {
     types.LimitedString: {'type': 'string'},
     types.LimitedText: {'type': 'string'},
     types.LimitedUnicode: {'type': 'string'},
@@ -115,9 +115,11 @@ class BaseMixin(object):
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
-    def get_es_mapping(cls, _depth=None):
+    def get_es_mapping(cls, _depth=None, types_map=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if types_map is None:
+            types_map = TYPES_MAP
         if _depth is None:
             _depth = cls._nesting_depth
         depth_reached = _depth <= 0
