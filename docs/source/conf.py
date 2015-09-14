@@ -50,7 +50,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Nefertari'
+project = u'nefertari-sqla'
 copyright = u'2015, Brandicted'
 author = u'Brandicted'
 

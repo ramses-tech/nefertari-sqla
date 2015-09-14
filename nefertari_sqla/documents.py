@@ -17,7 +17,7 @@ from nefertari.json_httpexceptions import (
     JHTTPBadRequest, JHTTPNotFound, JHTTPConflict)
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
-    DataProxy, drop_reserved_params)
+    drop_reserved_params)
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, IntegerField
 from . import types
@@ -65,7 +65,7 @@ def process_bools(_dict):
     return _dict
 
 
-TYPES_MAP = {
+types_map = {
     types.LimitedString: {'type': 'string'},
     types.LimitedText: {'type': 'string'},
     types.LimitedUnicode: {'type': 'string'},
@@ -103,17 +103,25 @@ class BaseMixin(object):
             included documents. If relationship field is not
             present in this list, this field's value in JSON will be an
             object's ID or list of IDs.
+        _nesting_depth: Depth of relationship field nesting in JSON.
+            Defaults to 1(one) which makes only one level of relationship
+            nested.
     """
     _public_fields = None
     _auth_fields = None
     _nested_relationships = ()
+    _nesting_depth = 1
 
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
-    def get_es_mapping(cls):
+    def get_es_mapping(cls, _depth=None):
         """ Generate ES mapping from model schema. """
         from nefertari.elasticsearch import ES
+        if _depth is None:
+            _depth = cls._nesting_depth
+        depth_reached = _depth <= 0
+
         properties = {}
         mapping = {
             ES.src2type(cls.__name__): {
@@ -129,16 +137,19 @@ class BaseMixin(object):
             if isinstance(column_type, types.ChoiceArray):
                 column_type = column_type.impl.item_type
             column_type = type(column_type)
-            if column_type not in TYPES_MAP:
+            if column_type not in types_map:
                 continue
-            properties[name] = TYPES_MAP[column_type]
+            properties[name] = types_map[column_type]
 
         for name, column in relationships.items():
-            if name in cls._nested_relationships:
+            if name in cls._nested_relationships and not depth_reached:
                 column_type = {'type': 'object'}
+                submapping = column.mapper.class_.get_es_mapping(
+                    _depth=_depth-1)
+                column_type.update(list(submapping.values())[0])
             else:
                 rel_pk_field = column.mapper.class_.pk_field_type()
-                column_type = TYPES_MAP[rel_pk_field]
+                column_type = types_map[rel_pk_field]
             properties[name] = column_type
 
         properties['_pk'] = {'type': 'string'}
@@ -588,10 +599,13 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
+        skip_fields = {'_version', '_acl'}
         null_values = {}
         columns = cls._mapped_columns()
         columns.update(cls._mapped_relationships())
         for name, col in columns.items():
+            if name in skip_fields:
+                continue
             if isinstance(col, RelationshipProperty) and col.uselist:
                 value = []
             else:
@@ -600,24 +614,33 @@ class BaseMixin(object):
         return null_values
 
     def to_dict(self, **kwargs):
+        _depth = kwargs.get('_depth')
+        if _depth is None:
+            _depth = self._nesting_depth
+        depth_reached = _depth is not None and _depth <= 0
+
+        _data = dictset()
         native_fields = self.__class__.native_fields()
-        __depth = kwargs.get('__depth')
-        depth_reached = __depth is not None and __depth <= 0
-        _data = {}
         for field in native_fields:
             value = getattr(self, field, None)
+
             include = field in self._nested_relationships
             if not include or depth_reached:
-                get_id = lambda v: getattr(v, v.pk_field(), None)
-                if isinstance(value, BaseMixin):
-                    value = get_id(value)
-                elif isinstance(value, InstrumentedList):
-                    value = [get_id(val) for val in value]
+                encoder = lambda v: getattr(v, v.pk_field(), None)
+            else:
+                encoder = lambda v: v.to_dict(_depth=_depth-1)
+
+            if isinstance(value, BaseMixin):
+                value = encoder(value)
+            elif isinstance(value, InstrumentedList):
+                value = [encoder(val) for val in value]
+            elif hasattr(value, 'to_dict'):
+                value = value.to_dict(_depth=_depth-1)
+
             _data[field] = value
-        _dict = DataProxy(_data).to_dict(**kwargs)
-        _dict['_type'] = self._type
-        _dict['_pk'] = str(getattr(self, self.pk_field()))
-        return _dict
+        _data['_type'] = self._type
+        _data['_pk'] = str(getattr(self, self.pk_field()))
+        return _data
 
     def update_iterables(self, params, attr, unique=False,
                          value_type=None, save=True,
@@ -741,6 +764,10 @@ class BaseMixin(object):
                 history = state.get_history(field, self)
                 if history.added or history.deleted:
                     return True
+
+    def _is_created(self):
+        state = attributes.instance_state(self)
+        return not state.persistent
 
 
 class BaseDocument(BaseObject, BaseMixin):
