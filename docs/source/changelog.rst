@@ -1,6 +1,9 @@
 Changelog
 =========
 
+* :release:`0.4.0 <2015-09-xx>`
+* :feature:`-` Nested relationships are now indexed in bulk in ElasticSearch
+
 * :release:`0.3.3 <2015-09-02>`
 * :bug:`-` Fixed a bug when using reserved query params with GET tunneling
 * :bug:`-` Fixed ES double indexation bug
