@@ -315,10 +315,77 @@ class BaseMixin(object):
 
     @classmethod
     def get_collection(cls, **params):
-        """
-        Params may include '_limit', '_page', '_sort', '_fields'.
-        Returns paginated and sorted query set.
-        Raises JHTTPBadRequest for bad values in params.
+        """ Query collection and return results.
+
+        Notes:
+        *   Before validating that only model fields are present in params,
+            reserved params, query params and all params starting with
+            double underscore are dropped.
+        *   Params which have value "_all" are dropped.
+        *   When ``_count`` param is used, objects count is returned
+            before applying offset and limit.
+
+        :param bool __strict: If True ``params`` are validated to contain
+            only fields defined on model, exception is raised if invalid
+            fields are present. When False - invalid fields are dropped.
+            Defaults to ``True``.
+        :param bool _item_request: Indicates whether it is a single item
+            request or not. When True and DataError happens on DB request,
+            JHTTPNotFound is raised. JHTTPBadRequest is raised when False.
+            Defaults to ``False``.
+        :param list _sort: Field names to sort results by. If field name
+            is prefixed with "-" it is used for "descending" sorting.
+            Otherwise "ascending" sorting is performed by that field.
+            Defaults to an empty list in which case sorting is not
+            performed.
+        :param list _fields: Names of fields which should be included
+            or excluded from results. Fields to excluded should be
+            prefixed with "-". Defaults to an empty list in which
+            case all fields are returned.
+        :param int _limit: Number of results per page. Defaults
+            to None in which case all results are returned.
+        :param int _page: Number of page. In conjunction with
+            ``_limit`` is used to calculate results offset. Defaults to
+            None in which case it is ignored. Params ``_page`` and
+            ``_start` are mutually exclusive.
+        :param int _start: Results offset. If provided ``_limit`` and
+            ``_page`` params are ignored when calculating offset. Defaults
+            to None. Params ``_page`` and ``_start`` are mutually
+            exclusive. If not offset-related params are provided, offset
+            equals to 0.
+        :param Query query_set: Existing queryset. If provided, all queries
+            are applied to it instead of creating new queryset. Defaults
+            to None.
+        :param _count: When provided, only results number is returned as
+            integer.
+        :param _explain: When provided, query performed(SQL) is returned
+            as a string instead of query results.
+        :param bool __raise_on_empty: When True JHTTPNotFound is raised
+            if query returned no results. Defaults to False in which case
+            error is just logged and empty query results are returned.
+
+        :returns: Query results as ``sqlalchemy.orm.query.Query`` instance.
+            May be sorted, offset, limited.
+        :returns: Dict of {'field_name': fieldval}, when ``_fields`` param
+            is provided.
+        :returns: Number of query results as an int when ``_count`` param
+            is provided.
+        :returns: String representing query ran when ``_explain`` param
+            is provided.
+
+        :raises JHTTPNotFound: When ``__raise_on_empty=True`` and no
+            results found.
+        :raises JHTTPNotFound: When ``_item_request=True`` and
+            ``sqlalchemy.exc.DataError`` exception is raised during DB
+            query. Latter exception is raised when querying DB with
+            an identifier of a wrong type. E.g. when querying Int field
+            with a string.
+        :raises JHTTPBadRequest: When ``_item_request=False`` and
+            ``sqlalchemy.exc.DataError`` exception is raised during DB
+            query.
+        :raises JHTTPBadRequest: When ``sqlalchemy.exc.InvalidRequestError``
+            or ``sqlalchemy.exc.IntegrityError`` errors happen during DB
+            query.
         """
         log.debug('Get collection: {}, {}'.format(cls.__name__, params))
         params.pop('__confirmation', False)
@@ -465,6 +532,13 @@ class BaseMixin(object):
 
     @classmethod
     def get_resource(cls, **params):
+        """ Get single item and raise exception if not found.
+
+        Exception raising when item is not found can be disabled
+        by passing ``__raise_on_empty=False`` in params.
+
+        :returns: Single collection item as an instance of ``cls``.
+        """
         params.setdefault('__raise_on_empty', True)
         params['_limit'] = 1
         params['_item_request'] = True
@@ -473,6 +547,16 @@ class BaseMixin(object):
 
     @classmethod
     def get(cls, **kw):
+        """ Get single item and don't raise exception if not found.
+
+        Exception raising when item is not found can be enabled
+        by passing ``__raise=False`` in params.
+
+        :param bool __raise: Indicates whether exception should be raised
+            if object is not found. Is passed as `__raise_on_empty` to
+            `get_resource`. Defaults to False.
+        :returns: Single collection item as an instance of ``cls``.
+        """
         return cls.get_resource(
             __raise_on_empty=kw.pop('__raise', False), **kw)
 
