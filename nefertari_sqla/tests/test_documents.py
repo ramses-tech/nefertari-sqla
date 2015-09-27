@@ -333,10 +333,10 @@ class TestBaseMixin(object):
         assert not docs.BaseMixin.has_field('bazz')
 
     @patch.object(docs.BaseMixin, 'get_collection')
-    def test_get_resource(self, mock_get_coll):
+    def test_get_item(self, mock_get_coll):
         queryset = Mock()
         mock_get_coll.return_value = queryset
-        resource = docs.BaseMixin.get_resource(foo='bar')
+        resource = docs.BaseMixin.get_item(foo='bar')
         mock_get_coll.assert_called_once_with(
             __raise_on_empty=True, _limit=1, foo='bar',
             _item_request=True)
@@ -367,12 +367,6 @@ class TestBaseMixin(object):
         assert sorted(simple_model.fields_to_query()) == [
             '_count', '_fields', '_limit', '_page', '_sort',
             '_start', '_version', 'id', 'name']
-
-    @patch.object(docs.BaseMixin, 'get_resource')
-    def test_get(self, get_res):
-        docs.BaseMixin.get(foo='bar')
-        get_res.assert_called_once_with(
-            __raise_on_empty=False, foo='bar')
 
     def test_unique_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -700,14 +694,14 @@ class TestBaseMixin(object):
     def test_is_modified_same_value_set(self, memory_db, simple_model):
         memory_db()
         obj = simple_model(id=1, name='foo').save()
-        obj = simple_model.get(id=1)
+        obj = simple_model.get_item(id=1)
         obj.name = 'foo'
         assert not obj._is_modified()
 
     def test_is_modified(self, memory_db, simple_model):
         memory_db()
         obj = simple_model(id=1, name='foo').save()
-        obj = simple_model.get(id=1)
+        obj = simple_model.get_item(id=1)
         obj.name = 'bar'
         assert obj._is_modified()
 

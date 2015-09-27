@@ -533,7 +533,7 @@ class BaseMixin(object):
         return list(set(query_fields + cls.native_fields()))
 
     @classmethod
-    def get_resource(cls, **params):
+    def get_item(cls, **params):
         """ Get single item and raise exception if not found.
 
         Exception raising when item is not found can be disabled
@@ -546,21 +546,6 @@ class BaseMixin(object):
         params['_item_request'] = True
         query_set = cls.get_collection(**params)
         return query_set.first()
-
-    @classmethod
-    def get(cls, **kw):
-        """ Get single item and don't raise exception if not found.
-
-        Exception raising when item is not found can be enabled
-        by passing ``__raise=False`` in params.
-
-        :param bool __raise: Indicates whether exception should be raised
-            if object is not found. Is passed as `__raise_on_empty` to
-            `get_resource`. Defaults to False.
-        :returns: Single collection item as an instance of ``cls``.
-        """
-        return cls.get_resource(
-            __raise_on_empty=kw.pop('__raise', False), **kw)
 
     def unique_fields(self):
         native_fields = class_mapper(self.__class__).columns

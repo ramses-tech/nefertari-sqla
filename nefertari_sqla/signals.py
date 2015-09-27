@@ -24,7 +24,8 @@ def on_after_insert(mapper, connection, target):
     request = getattr(target, '_request', None)
     model_cls = target.__class__
     pk_field = target.pk_field()
-    reloaded = model_cls.get(**{pk_field: getattr(target, pk_field)})
+    reloaded = model_cls.get_item(
+        **{pk_field: getattr(target, pk_field)})
     index_object(reloaded, request=request)
 
 
