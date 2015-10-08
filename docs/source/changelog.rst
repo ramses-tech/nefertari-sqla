@@ -1,8 +1,9 @@
 Changelog
 =========
 
-* :release:`0.4.0 <2015-09-xx>`
+* :release:`0.4.0 <2015-10-07>`
 * :feature:`-` Nested relationships are now indexed in bulk in ElasticSearch
+* :feature:`-` Added '_nesting_depth' property in models to control the level of nesting, default is 1
 
 * :release:`0.3.3 <2015-09-02>`
 * :bug:`-` Fixed a bug when using reserved query params with GET tunneling
