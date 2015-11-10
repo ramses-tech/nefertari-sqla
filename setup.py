@@ -1,22 +1,23 @@
 from setuptools import setup, find_packages
 
-
 install_requires = [
-    'sqlalchemy',
-    'zope.dottedname',
-    'psycopg2',
-    'pyramid_sqlalchemy',
-    'sqlalchemy_utils',
     'elasticsearch',
+    'mongoengine==0.9',
+    'nefertari>=0.6.0',
+    'psycopg2',
+    'pymongo==2.8',
+    'pyramid_sqlalchemy',
     'pyramid_tm',
+    'python-dateutil',
     'six',
-    'nefertari>=0.5.1'
+    'sqlalchemy',
+    'sqlalchemy_utils',
+    'zope.dottedname',
 ]
-
 
 setup(
     name='nefertari_sqla',
-    version="0.3.3",
+    version="0.4.0",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
