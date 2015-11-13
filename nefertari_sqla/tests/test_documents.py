@@ -338,7 +338,7 @@ class TestBaseMixin(object):
         mock_get_coll.return_value = queryset
         resource = docs.BaseMixin.get_item(foo='bar')
         mock_get_coll.assert_called_once_with(
-            __raise_on_empty=True, _limit=1, foo='bar',
+            _raise_on_empty=True, _limit=1, foo='bar',
             _item_request=True)
         mock_get_coll().first.assert_called_once_with()
         assert resource == mock_get_coll().first()
@@ -863,19 +863,19 @@ class TestGetCollection(object):
         simple_model(id=1, name='foo').save()
         with pytest.raises(JHTTPBadRequest):
             simple_model.get_collection(
-                _limit=2, __strict=True, name='foo', qwe=1)
+                _limit=2, _strict=True, name='foo', qwe=1)
 
         result = simple_model.get_collection(
-            _limit=2, __strict=False, name='foo', qwe=1)
+            _limit=2, _strict=False, name='foo', qwe=1)
         assert result.all()[0].name == 'foo'
 
     def test_raise_on_empty_param(self, simple_model, memory_db):
         memory_db()
         with pytest.raises(JHTTPNotFound):
-            simple_model.get_collection(_limit=1, __raise_on_empty=True)
+            simple_model.get_collection(_limit=1, _raise_on_empty=True)
 
         try:
-            simple_model.get_collection(_limit=1, __raise_on_empty=False)
+            simple_model.get_collection(_limit=1, _raise_on_empty=False)
         except JHTTPNotFound:
             raise Exception('Unexpected JHTTPNotFound exception')
 
@@ -887,7 +887,7 @@ class TestGetCollection(object):
         memory_db()
         mock_drop.side_effect = lambda x: dictset({'name': 'a'})
         try:
-            simple_model.get_collection(_limit=1, __strict=True)
+            simple_model.get_collection(_limit=1, _strict=True)
         except JHTTPBadRequest:
             raise Exception('Unexpected JHTTPBadRequest exception')
         mock_drop.assert_called_once_with({})
