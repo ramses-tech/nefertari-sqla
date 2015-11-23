@@ -722,6 +722,20 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
+    def test_is_abstract(self, simple_model, memory_db):
+        assert not simple_model._is_abstract()
+
+        class Foo(simple_model):
+            __abstract__ = True
+
+        assert Foo._is_abstract()
+
+        class Bar(Foo):
+            __tablename__ = 'a'
+            barbar = fields.StringField(primary_key=True)
+
+        assert not Bar._is_abstract()
+
     def test_bump_version(self, simple_model, memory_db):
         from datetime import datetime
         memory_db()

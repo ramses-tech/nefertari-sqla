@@ -864,6 +864,10 @@ class BaseDocument(six.with_metaclass(
 
     _version = IntegerField(default=0)
 
+    @classmethod
+    def _is_abstract(cls):
+        return cls.__dict__.get('__abstract__', False)
+
     def _bump_version(self):
         if self._is_modified():
             self._version = (self._version or 0) + 1
