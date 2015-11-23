@@ -18,6 +18,8 @@ from nefertari.json_httpexceptions import (
 from nefertari.utils import (
     process_fields, process_limit, _split, dictset,
     drop_reserved_params)
+from nefertari.engine.common import MultipleEnginesDocMixin
+
 from .signals import ESMetaclass, on_bulk_delete
 from .fields import ListField, DictField, IntegerField
 from . import types
@@ -843,7 +845,7 @@ class BaseMixin(object):
         return not state.persistent
 
 
-class BaseDocument(BaseObject, BaseMixin):
+class BaseDocument(BaseObject, MultipleEnginesDocMixin, BaseMixin):
     """ Base class for SQLA models.
 
     Subclasses of this class that do not define a model schema
