@@ -9,7 +9,7 @@ from nefertari.engine.common import (
     JSONEncoder,
     ESJSONSerializer,
 )
-from .signals import ESMetaclass
+from .meta import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
     get_relationship_cls)

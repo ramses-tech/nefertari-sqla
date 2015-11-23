@@ -20,7 +20,8 @@ from nefertari.utils import (
     drop_reserved_params)
 from nefertari.engine.common import MultiEngineDocMixin
 
-from .signals import ESMetaclass, on_bulk_delete
+from .meta import ESMetaclass, DocMeta
+from .signals import on_bulk_delete
 from .fields import ListField, DictField, IntegerField
 from . import types
 
@@ -845,7 +846,9 @@ class BaseMixin(object):
         return not state.persistent
 
 
-class BaseDocument(BaseObject, MultiEngineDocMixin, BaseMixin):
+class BaseDocument(six.with_metaclass(
+        DocMeta,
+        BaseObject, MultiEngineDocMixin, BaseMixin)):
     """ Base class for SQLA models.
 
     Subclasses of this class that do not define a model schema

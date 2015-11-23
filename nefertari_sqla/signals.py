@@ -1,7 +1,6 @@
 import logging
 
 from sqlalchemy import event
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import object_session, class_mapper, attributes
 from pyramid_sqlalchemy import Session
 
@@ -103,10 +102,3 @@ def setup_es_signals_for(source_cls):
 
 
 event.listen(Session, 'after_bulk_update', on_bulk_update)
-
-
-class ESMetaclass(DeclarativeMeta):
-    def __init__(self, name, bases, attrs):
-        self._index_enabled = True
-        setup_es_signals_for(self)
-        return super(ESMetaclass, self).__init__(name, bases, attrs)
