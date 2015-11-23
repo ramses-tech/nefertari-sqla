@@ -178,6 +178,12 @@ class BaseMixin(object):
         event.listen(model, 'after_insert', generate)
 
     @classmethod
+    def _fields_map(cls):
+        columns = cls._mapped_columns()
+        columns.update(cls._mapped_relationships())
+        return columns
+
+    @classmethod
     def pk_field(cls):
         """ Get a primary key field name. """
         return class_mapper(cls).primary_key[0].name

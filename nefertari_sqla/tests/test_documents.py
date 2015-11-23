@@ -131,6 +131,13 @@ class TestBaseMixin(object):
             }
         }
 
+    def test_fields_map(self, simple_model, memory_db):
+        memory_db()
+        fields_cls = simple_model._fields_map()
+        assert set(fields_cls.keys()) == {'id', '_version', 'name'}
+        assert isinstance(fields_cls['id'], fields.IdField)
+        assert isinstance(fields_cls['name'], fields.StringField)
+
     def test_pk_field(self, memory_db):
         class MyModel(docs.BaseDocument):
             __tablename__ = 'mymodel'
