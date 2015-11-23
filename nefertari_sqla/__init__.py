@@ -5,7 +5,10 @@ from zope.dottedname.resolve import resolve
 from .documents import (
     BaseDocument, ESBaseDocument, BaseMixin,
     get_document_cls, get_document_classes)
-from .serializers import JSONEncoder, ESJSONSerializer
+from nefertari.engine.common import (
+    JSONEncoder,
+    ESJSONSerializer,
+)
 from .signals import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
