@@ -4,7 +4,12 @@ from nefertari.engine.common import MultiEngineMeta
 
 
 class DocMeta(MultiEngineMeta, DeclarativeMeta):
-    pass
+    def __new__(cls, name, bases, attrs):
+        table_specified = ('__tablename__' in attrs or
+                           '__table__' in attrs)
+        if not table_specified and not attrs.get('__abstract__', False):
+            attrs['__tablename__'] = name.lower()
+        return super(DocMeta, cls).__new__(cls, name, bases, attrs)
 
 
 class ESMetaclass(DocMeta):
