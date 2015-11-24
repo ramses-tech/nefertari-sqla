@@ -4,6 +4,9 @@ from nefertari.engine.common import MultiEngineMeta
 
 
 class DocMeta(MultiEngineMeta, DeclarativeMeta):
+    """ Metaclass that generates __tablename__ if it or '__table__'
+    aren't explicitly defined.
+    """
     def __new__(cls, name, bases, attrs):
         table_specified = ('__tablename__' in attrs or
                            '__table__' in attrs)
