@@ -24,6 +24,7 @@ from .meta import ESMetaclass, DocMeta
 from .signals import on_bulk_delete
 from .fields import ListField, DictField, IntegerField, Relationship
 from . import types
+from .utils import relationship_fields
 
 
 log = logging.getLogger(__name__)
@@ -194,11 +195,11 @@ class BaseMixin(object):
         columns.update(cls._mapped_relationships())
         backrefs = [
             key for key, val in columns.items()
-            if (isinstance(val, RelationshipProperty) and
+            if (isinstance(val, relationship_fields) and
                 getattr(val, '_is_backref', True))]
         columns = {key: type(val) for key, val in columns.items()}
         for key in columns:
-            if columns[key] is RelationshipProperty:
+            if columns[key] in relationship_fields:
                 columns[key] = Relationship
         for name in backrefs:
             columns.pop(name, None)
