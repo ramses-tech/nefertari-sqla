@@ -22,7 +22,7 @@ from nefertari.engine.common import MultiEngineDocMixin
 
 from .meta import ESMetaclass, DocMeta
 from .signals import on_bulk_delete
-from .fields import ListField, DictField, IntegerField
+from .fields import ListField, DictField, IntegerField, Relationship
 from . import types
 
 
@@ -178,9 +178,30 @@ class BaseMixin(object):
         event.listen(model, 'after_insert', generate)
 
     @classmethod
-    def _fields_map(cls):
+    def _get_fields_creators(cls):
+        """ Return map of field creator classes/functions.
+
+        Map consists of:
+            field name: String name of a field
+            field creator: Class/func that may be run to create new
+                instance of such field. Note that these are classes that
+                create fields, not classes of created fields. E.g.
+                "Relationship" func instead of "RelationshipProperty".
+
+        Does not return backref relationship fields.
+        """
         columns = cls._mapped_columns()
         columns.update(cls._mapped_relationships())
+        backrefs = [
+            key for key, val in columns.items()
+            if (isinstance(val, RelationshipProperty) and
+                getattr(val, '_is_backref', True))]
+        columns = {key: type(val) for key, val in columns.items()}
+        for key in columns:
+            if columns[key] is RelationshipProperty:
+                columns[key] = Relationship
+        for name in backrefs:
+            columns.pop(name, None)
         return columns
 
     @classmethod

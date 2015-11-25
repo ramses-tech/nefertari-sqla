@@ -514,4 +514,5 @@ def Relationship(**kwargs):
 
     rel_field = relationship(rel_document, **rel_kw)
     rel_field._init_kwargs = _init_kwargs
+    rel_field._is_backref = False
     return rel_field
