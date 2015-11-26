@@ -586,7 +586,9 @@ class BaseMixin(object):
     def get_or_create(cls, **params):
         defaults = params.pop('defaults', {})
         _limit = params.pop('_limit', 1)
-        query_set = cls.get_collection(_limit=_limit, **params)
+        query_set = cls.get_collection(
+            _query_secondary=False, _limit=_limit,
+            **params)
         try:
             obj = query_set.one()
             return obj, False
