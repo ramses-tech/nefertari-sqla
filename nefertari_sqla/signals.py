@@ -59,10 +59,6 @@ def on_after_delete(mapper, connection, target):
 def on_bulk_update(update_context):
     request = getattr(
         update_context.query, '_request', None)
-    model_cls = update_context.mapper.entity
-    if not getattr(model_cls, '_index_enabled', False):
-        return
-
     objects = update_context.query.all()
     if not objects:
         return
@@ -73,19 +69,16 @@ def on_bulk_update(update_context):
 
 
 def on_bulk_delete(model_cls, objects, request):
-    if not getattr(model_cls, '_index_enabled', False):
-        return
-
     if request is not None:
         event = sync_events.BulkDeleted(items=list(objects))
         request.registry.notify(event)
 
 
-def setup_es_signals_for(source_cls):
+def setup_signals_for(source_cls):
     event.listen(source_cls, 'after_insert', on_after_insert)
     event.listen(source_cls, 'after_update', on_after_update)
     event.listen(source_cls, 'after_delete', on_after_delete)
-    log.info('setup_sqla_es_signals_for: %r' % source_cls)
+    log.info('setup_sqla_signals_for: %r' % source_cls)
 
 
 event.listen(Session, 'after_bulk_update', on_bulk_update)

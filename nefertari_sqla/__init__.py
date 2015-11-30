@@ -1,15 +1,12 @@
 import logging
 
-from zope.dottedname.resolve import resolve
-
 from .documents import (
-    BaseDocument, ESBaseDocument, BaseMixin,
+    BaseDocument, BaseMixin,
     get_document_cls, get_document_classes)
 from nefertari.engine.common import (
     JSONEncoder,
     ESJSONSerializer,
 )
-from .meta import ESMetaclass
 from .utils import (
     relationship_fields, is_relationship_field,
     get_relationship_cls)
@@ -62,7 +59,6 @@ __all__ = [
     'DictField',
     'ListField',
     'BaseDocument',
-    'ESBaseDocument',
     'BaseMixin',
     'get_document_cls',
     'get_document_classes',
@@ -71,7 +67,6 @@ __all__ = [
     'get_relationship_cls',
     'JSONEncoder',
     'ESJSONSerializer',
-    'ESMetaclass',
     'setup_database',
     ]
 

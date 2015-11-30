@@ -20,7 +20,7 @@ from nefertari.utils import (
     drop_reserved_params)
 from nefertari.engine.common import MultiEngineDocMixin
 
-from .meta import ESMetaclass, DocMeta
+from .meta import DocMeta
 from .signals import on_bulk_delete
 from .fields import ListField, DictField, IntegerField, Relationship
 from . import types
@@ -944,12 +944,3 @@ class BaseDocument(six.with_metaclass(
         columns.update(cls._mapped_relationships())
         column = columns.get(field_name)
         return getattr(column, '_init_kwargs', None)
-
-
-class ESBaseDocument(six.with_metaclass(ESMetaclass, BaseDocument)):
-    """ Base class for SQLA models that use Elasticsearch.
-
-    Subclasses of this class that do not define a model schema
-    should be abstract as well (__abstract__ = True).
-    """
-    __abstract__ = True
