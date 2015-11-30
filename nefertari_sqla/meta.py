@@ -15,6 +15,7 @@ class DocMeta(MultiEngineMeta, DeclarativeMeta):
         return super(DocMeta, cls).__new__(cls, name, bases, attrs)
 
     def __init__(self, name, bases, attrs):
-        from .signals import setup_signals_for
-        setup_signals_for(self)
+        if self._sync_events:
+            from .signals import setup_signals_for
+            setup_signals_for(self)
         return super(DocMeta, self).__init__(name, bases, attrs)

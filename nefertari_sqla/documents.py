@@ -98,6 +98,8 @@ class BaseMixin(object):
     """ Represents mixin class for models.
 
     Attributes:
+        _sync_events: Boolean indicating whether sync events should be
+            triggered on model instances change.
         _auth_fields: String names of fields meant to be displayed to
             authenticated users.
         _public_fields: String names of fields meant to be displayed to
@@ -112,12 +114,12 @@ class BaseMixin(object):
             Defaults to 1(one) which makes only one level of relationship
             nested.
     """
-    _public_fields = None
+    _sync_events = True
     _auth_fields = None
+    _public_fields = None
     _hidden_fields = None
     _nested_relationships = ()
     _nesting_depth = 1
-
     _type = property(lambda self: self.__class__.__name__)
 
     @classmethod
