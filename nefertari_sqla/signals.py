@@ -10,14 +10,6 @@ from nefertari.engine import sync_events
 log = logging.getLogger(__name__)
 
 
-def index_object(obj, with_refs=True, **kwargs):
-    from nefertari.elasticsearch import ES
-    es = ES(obj.__class__.__name__)
-    es.index(obj.to_dict(), **kwargs)
-    if with_refs:
-        es.index_relations(obj, **kwargs)
-
-
 def on_after_insert(mapper, connection, target):
     # Reload `target` to get access to back references and processed
     # fields values
