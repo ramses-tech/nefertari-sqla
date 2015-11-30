@@ -1,9 +1,9 @@
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
-from nefertari import engine
+from nefertari.engine.common import MultiEngineMeta
 
 
-class DocMeta(engine.common.MultiEngineMeta, DeclarativeMeta):
+class DocMeta(MultiEngineMeta, DeclarativeMeta):
     """ Metaclass that generates __tablename__ if it or '__table__'
     aren't explicitly defined.
     """
@@ -15,7 +15,6 @@ class DocMeta(engine.common.MultiEngineMeta, DeclarativeMeta):
         return super(DocMeta, cls).__new__(cls, name, bases, attrs)
 
     def __init__(self, name, bases, attrs):
-        if engine.secondary is not None:
-            from .signals import setup_signals_for
-            setup_signals_for(self)
+        from .signals import setup_signals_for
+        setup_signals_for(self)
         return super(DocMeta, self).__init__(name, bases, attrs)
