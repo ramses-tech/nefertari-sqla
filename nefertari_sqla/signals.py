@@ -16,8 +16,9 @@ def on_after_insert(mapper, connection, target):
     request = getattr(target, '_request', None)
     model_cls = target.__class__
     pk_field = target.pk_field()
-    reloaded = model_cls.get_item(
-        **{pk_field: getattr(target, pk_field)})
+    reloaded = model_cls.get_item(**{
+        pk_field: getattr(target, pk_field),
+        '_query_secondary': False})
 
     if request is not None:
         event = sync_events.ItemCreated(item=reloaded)
@@ -78,7 +79,7 @@ def setup_signals_for(source_cls):
     event.listen(source_cls, 'after_insert', on_after_insert)
     event.listen(source_cls, 'after_update', on_after_update)
     event.listen(source_cls, 'after_delete', on_after_delete)
-    log.info('setup_sqla_signals_for: %r' % source_cls)
+    log.info('setup_signals_for: %r' % source_cls)
 
 
 event.listen(Session, 'after_bulk_update', on_bulk_update)
