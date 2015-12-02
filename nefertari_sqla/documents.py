@@ -585,7 +585,7 @@ class BaseMixin(object):
         return [f for f in native_fields if f.unique or f.primary_key]
 
     @classmethod
-    def get_or_create(cls, **params):
+    def get_or_create(cls, request=None, **params):
         defaults = params.pop('defaults', {})
         _limit = params.pop('_limit', 1)
         query_set = cls.get_collection(
@@ -597,7 +597,7 @@ class BaseMixin(object):
         except NoResultFound:
             defaults.update(params)
             new_obj = cls(**defaults)
-            new_obj.save()
+            new_obj.save(request=request)
             return new_obj, True
         except MultipleResultsFound:
             raise JHTTPBadRequest('Bad or Insufficient Params')
