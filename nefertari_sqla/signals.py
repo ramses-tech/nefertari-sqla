@@ -2,7 +2,6 @@ import logging
 
 from sqlalchemy import event
 from sqlalchemy.orm import object_session, class_mapper, attributes
-from pyramid_sqlalchemy import Session
 
 from nefertari.engine import sync_events
 

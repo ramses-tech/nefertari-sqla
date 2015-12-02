@@ -5,7 +5,6 @@ from .documents import (
     get_document_cls, get_document_classes)
 from nefertari.engine.common import (
     JSONEncoder,
-    ESJSONSerializer,
 )
 from .utils import (
     relationship_fields, is_relationship_field,
@@ -66,9 +65,8 @@ __all__ = [
     'is_relationship_field',
     'get_relationship_cls',
     'JSONEncoder',
-    'ESJSONSerializer',
     'setup_database',
-    ]
+]
 
 log = logging.getLogger(__name__)
 
