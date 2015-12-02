@@ -57,13 +57,7 @@ def on_after_delete(mapper, connection, target):
         request.registry.notify(event)
 
 
-def on_bulk_update(update_context):
-    request = getattr(
-        update_context.query, '_request', None)
-    objects = update_context.query.all()
-    if not objects:
-        return
-
+def on_bulk_update(model_cls, objects, request):
     if request is not None:
         event = sync_events.BulkUpdated(items=list(objects))
         request.registry.notify(event)
@@ -80,6 +74,3 @@ def setup_signals_for(source_cls):
     event.listen(source_cls, 'after_update', on_after_update)
     event.listen(source_cls, 'after_delete', on_after_delete)
     log.info('setup_signals_for: %r' % source_cls)
-
-
-event.listen(Session, 'after_bulk_update', on_bulk_update)

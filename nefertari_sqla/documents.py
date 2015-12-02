@@ -21,7 +21,7 @@ from nefertari.utils import (
 from nefertari.engine.common import MultiEngineDocMixin
 
 from .meta import DocMeta
-from .signals import on_bulk_delete
+from .signals import on_bulk_delete, on_bulk_update
 from .fields import ListField, DictField, IntegerField, Relationship
 from . import types
 from .utils import relationship_fields
@@ -667,9 +667,10 @@ class BaseMixin(object):
         """
         if isinstance(items, Query):
             upd_queryset = cls._clean_queryset(items)
-            upd_queryset._request = request
+            upd_items = upd_queryset.all()
             upd_count = upd_queryset.update(
                 params, synchronize_session=synchronize_session)
+            on_bulk_update(cls, upd_items, request)
             return upd_count
         items_count = len(items)
         for item in items:

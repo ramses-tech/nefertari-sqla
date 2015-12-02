@@ -487,7 +487,7 @@ class TestBaseMixin(object):
     def test_underscore_update_many(self):
         item = Mock()
         assert docs.BaseMixin._update_many([item], {'foo': 'bar'}) == 1
-        item.update.assert_called_once_with({'foo': 'bar'}, None)
+        item.update.assert_called_once_with({'foo': 'bar'}, request=None)
 
     @patch.object(docs.BaseMixin, '_clean_queryset')
     def test_underscore_update_many_query(self, mock_clean):
