@@ -673,7 +673,7 @@ class BaseMixin(object):
             return upd_count
         items_count = len(items)
         for item in items:
-            item.update(params, request)
+            item.update(params, request=request)
         return items_count
 
     @classmethod
