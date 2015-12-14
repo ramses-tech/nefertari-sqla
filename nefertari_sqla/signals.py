@@ -20,7 +20,7 @@ def on_after_insert(mapper, connection, target):
         '_query_secondary': False})
 
     if request is not None:
-        event = sync_events.ItemCreated(item=reloaded)
+        event = sync_events.ItemCreated(item=reloaded, request=request)
         request.registry.notify(event)
 
 
@@ -38,33 +38,36 @@ def on_after_update(mapper, connection, target):
                 obj_session.expire(value)
 
             if request is not None:
-                event = sync_events.ItemUpdated(item=value)
+                event = sync_events.ItemUpdated(
+                    item=value, request=request)
                 request.registry.notify(event)
 
     # Reload `target` to get access to processed fields values
     columns = [c.name for c in class_mapper(target.__class__).columns]
     object_session(target).expire(target, attribute_names=columns)
     if request is not None:
-        event = sync_events.ItemUpdated(item=target)
+        event = sync_events.ItemUpdated(item=target, request=request)
         request.registry.notify(event)
 
 
 def on_after_delete(mapper, connection, target):
     request = getattr(target, '_request', None)
     if request is not None:
-        event = sync_events.ItemDeleted(item=target)
+        event = sync_events.ItemDeleted(item=target, request=request)
         request.registry.notify(event)
 
 
 def on_bulk_update(model_cls, objects, request):
     if request is not None:
-        event = sync_events.BulkUpdated(items=list(objects))
+        event = sync_events.BulkUpdated(
+            items=list(objects), request=request)
         request.registry.notify(event)
 
 
 def on_bulk_delete(model_cls, objects, request):
     if request is not None:
-        event = sync_events.BulkDeleted(items=list(objects))
+        event = sync_events.BulkDeleted(
+            items=list(objects), request=request)
         request.registry.notify(event)
 
 
