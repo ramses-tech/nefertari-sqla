@@ -740,16 +740,14 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    def test_is_abstract(self, simple_model, memory_db):
-        assert not simple_model._is_abstract()
-
-        class Foo(simple_model):
+    def test_is_abstract(self, memory_db):
+        class Foo(docs.BaseDocument):
             __abstract__ = True
 
         assert Foo._is_abstract()
 
         class Bar(Foo):
-            __tablename__ = 'a'
+            __tablename__ = 'bar'
             barbar = fields.StringField(primary_key=True)
 
         assert not Bar._is_abstract()
