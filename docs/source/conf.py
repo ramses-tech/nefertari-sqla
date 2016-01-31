@@ -32,7 +32,7 @@ extensions = [
     'releases'
 ]
 
-releases_github_path = 'brandicted/nefertari-sqla'
+releases_github_path = 'ramses-tech/nefertari-sqla'
 releases_debug = True
 
 # Add any paths that contain templates here, relative to this directory.
