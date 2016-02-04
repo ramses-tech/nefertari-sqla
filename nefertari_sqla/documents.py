@@ -658,9 +658,6 @@ class BaseMixin(object):
         parts = [
             '{}={}'.format(pk_field, getattr(self, pk_field)),
         ]
-        if hasattr(self, '_version'):
-            parts.append('v=%s' % self._version)
-
         return '<{}: {}>'.format(self.__class__.__name__, ', '.join(parts))
 
     @classmethod
@@ -672,7 +669,7 @@ class BaseMixin(object):
     @classmethod
     def get_null_values(cls):
         """ Get null values of :cls: fields. """
-        skip_fields = {'_version', '_acl'}
+        skip_fields = set(['_acl'])
         null_values = {}
         columns = cls._mapped_columns()
         columns.update(cls._mapped_relationships())
@@ -851,15 +848,8 @@ class BaseDocument(BaseObject, BaseMixin):
     """
     __abstract__ = True
 
-    _version = IntegerField(default=0)
-
-    def _bump_version(self):
-        if self._is_modified():
-            self._version = (self._version or 0) + 1
-
     def save(self, request=None):
         session = object_session(self)
-        self._bump_version()
         self._request = request
         session = session or Session()
         try:
@@ -880,7 +870,6 @@ class BaseDocument(BaseObject, BaseMixin):
         self._request = request
         try:
             self._update(params)
-            self._bump_version()
             session = object_session(self)
             session.add(self)
             session.flush()
