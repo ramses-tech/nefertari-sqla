@@ -1,6 +1,9 @@
 Changelog
 =========
 
+* :release:`0.4.2 <????-??-??>`
+* :bug:`90` Deprecated '_version' field
+
 * :release:`0.4.1 <2015-11-18>`
 * :bug:`-` Cosmetic name changes in preparation of engine refactoring
 
