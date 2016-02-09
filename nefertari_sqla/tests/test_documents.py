@@ -104,7 +104,6 @@ class TestBaseMixin(object):
             'MyModel': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_version': {'type': 'long'},
                     'settings': {'type': 'object', 'enabled': False},
                     'groups': {'type': 'string'},
                     'my_id': {'type': 'long'},
@@ -120,7 +119,6 @@ class TestBaseMixin(object):
             'MyModel2': {
                 'properties': {
                     '_pk': {'type': 'string'},
-                    '_version': {'type': 'long'},
                     'child_id': {'type': 'string'},
                     'name': {'type': 'string'},
                     'myself': {
@@ -196,7 +194,7 @@ class TestBaseMixin(object):
         memory_db()
 
         query_set = Mock()
-        _fields = ['-title', '-_version']
+        _fields = ['-title']
         MyModel.apply_fields(query_set, _fields)
         query_set.with_entities.assert_called_once_with(
             MyModel.desc, MyModel.id, MyModel.name)
@@ -346,12 +344,12 @@ class TestBaseMixin(object):
     def test_native_fields(self, simple_model, memory_db):
         memory_db()
         assert sorted(simple_model.native_fields()) == [
-            '_version', 'id', 'name']
+            'id', 'name']
 
     def test_mapped_columns(self, simple_model, memory_db):
         memory_db()
         cols = simple_model._mapped_columns().keys()
-        assert sorted(cols) == ['_version', 'id', 'name']
+        assert sorted(cols) == ['id', 'name']
 
     @patch.object(docs, 'class_mapper')
     def test_mapped_relationships(
@@ -366,7 +364,7 @@ class TestBaseMixin(object):
         memory_db()
         assert sorted(simple_model.fields_to_query()) == [
             '_count', '_fields', '_limit', '_page', '_sort',
-            '_start', '_version', 'id', 'name']
+            '_start', 'id', 'name']
 
     def test_unique_fields(self, memory_db):
         class MyModel(docs.BaseDocument):
@@ -481,8 +479,7 @@ class TestBaseMixin(object):
     def test_repr(self, simple_model, memory_db):
         obj = simple_model()
         obj.id = 3
-        obj._version = 12
-        assert str(obj) == '<MyModel: id=3, v=12>'
+        assert str(obj) == '<MyModel: id=3>'
 
     @patch.object(docs.BaseMixin, 'get_collection')
     def test_get_by_ids(self, mock_coll, memory_db):
@@ -538,7 +535,7 @@ class TestBaseMixin(object):
 
         result = myobj1.to_dict()
         assert list(sorted(result.keys())) == [
-            '_pk', '_type', '_version', 'id', 'other_obj',
+            '_pk', '_type', 'id', 'other_obj',
             'other_obj2', 'other_obj3']
         assert result['_type'] == 'MyModel'
         assert result['id'] == 1
@@ -715,19 +712,6 @@ class TestBaseMixin(object):
 
 class TestBaseDocument(object):
 
-    def test_bump_version(self, simple_model, memory_db):
-        from datetime import datetime
-        memory_db()
-
-        myobj = simple_model(id=None)
-        assert myobj._version is None
-        myobj._bump_version()
-
-        myobj.save()
-        myobj.name = 'foo'
-        myobj._bump_version()
-        assert myobj._version == 1
-
     @patch.object(docs, 'object_session')
     def test_save(self, obj_session, simple_model, memory_db):
         memory_db()
@@ -735,7 +719,6 @@ class TestBaseDocument(object):
         myobj = simple_model(id=4)
         newobj = myobj.save()
         assert newobj == myobj
-        assert myobj._version is None
         obj_session.assert_called_once_with(myobj)
         obj_session().add.assert_called_once_with(myobj)
         obj_session().flush.assert_called_once_with()
