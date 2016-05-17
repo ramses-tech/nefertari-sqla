@@ -1,7 +1,7 @@
 Changelog
 =========
 
-* :release:`0.4.2 <????-??-??>`
+* :release:`0.4.2 <2016-05-17>`
 * :bug:`90` Deprecated '_version' field
 
 * :release:`0.4.1 <2015-11-18>`

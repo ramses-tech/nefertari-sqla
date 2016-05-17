@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 install_requires = [
     'elasticsearch',
-    'nefertari>=0.6.1',
+    'nefertari>=0.7.0',
     'psycopg2',
     'pyramid_sqlalchemy',
     'pyramid_tm',
@@ -14,7 +14,7 @@ install_requires = [
 
 setup(
     name='nefertari_sqla',
-    version="0.4.1",
+    version="0.4.2",
     description='sqla engine for nefertari',
     classifiers=[
         "Programming Language :: Python",
@@ -22,6 +22,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
         "Framework :: Pyramid",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
